@@ -37,8 +37,8 @@ pub struct Operand {
 
 pub struct Instruction {
     pub operation: String,
-    pub left_operand: Option<Operand>,
-    pub right_operand: Option<Operand>,
+    pub dest: Option<Operand>,
+    pub src: Option<Operand>,
 }
 
 impl CpuContext {

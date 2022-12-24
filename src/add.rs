@@ -17,8 +17,8 @@ pub fn do_add(context: &mut CpuContext, inst: &Instruction) {
     // We already know that inst.operation is "ADD".
 
     // When left is register16
-    if let Some(left) = inst.left_operand.as_ref() {
-        if inst.right_operand.is_none() {
+    if let Some(left) = inst.dest.as_ref() {
+        if inst.src.is_none() {
             panic!("wrong right");
         }
 
@@ -28,7 +28,7 @@ pub fn do_add(context: &mut CpuContext, inst: &Instruction) {
             target_reg,
             cur_val
                 + inst
-                    .right_operand
+                    .src
                     .as_ref()
                     .map(|opnd| opnd.field.parse::<u16>().unwrap())
                     .unwrap(),
