@@ -2,6 +2,8 @@ mod cpucontext;
 
 use pest::Parser;
 use pest_derive::Parser;
+use std::collections::HashMap;
+use std::fs;
 
 #[derive(Parser)]
 #[grammar = "assembly.pest"] // grammar file
@@ -31,19 +33,51 @@ fn main() {
         .unwrap();
     println!(
         "instruction: rule={:?} text={}",
-        instruction.as_rule(),
-        instruction.as_str()
+        instruction.as_rule(), // mov
+        instruction.as_str()   // mov ax, bx
     );
 
     /*
-    Rule: operand
-    Text: ax
-    Rule: operand
-    Text: bx
+    instruction type is Pair. The into_inner method returns Pairs that is an iterator on Pair of enclosed rules
+    mov = { "mov" + operand + ',' + operand } => Enclosed rules are operand and operand.
+    So below for loop returns
+    Rule: operand Text: ax
+    Rule: operand Text: bx
      */
     for pair in instruction.into_inner() {
         println!("operand: Rule: {:?} Text={}", pair.as_rule(), pair.as_str());
     }
 
-    // TODO: NEXT THING: how to make a loop to parse one program?
+    println!("########### try to read a file");
+    let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
+    let file = AssemblyParser::parse(Rule::program, &unparsed_file)
+        .expect("unsuccessful parse") // unwrap the parse result
+        .next()
+        .unwrap(); // get and unwrap the `file` rule; never fails
+    for line in file.into_inner() {
+        match line.as_rule() {
+            Rule::mov => {
+                println!("mov:{:?}", line);
+                let mut inner_rule = line.into_inner();
+
+                // Below prints each operands as "Operand" but we should know the type of operand: register, number or label.
+                let first_operand = inner_rule.next().unwrap();
+                println!(
+                    "first: rule={:?} text={}",
+                    first_operand,
+                    first_operand.as_str()
+                );
+                let second_operand = inner_rule.next().unwrap();
+                println!(
+                    "second: rule={:?} text={}",
+                    second_operand,
+                    second_operand.as_str()
+                );
+
+                let sec = AssemblyParser::parse(Rule::operand, second_operand.as_str()).unwrap();
+                println!("sec={:?}", sec);
+            }
+            _ => println!("else:{}", line),
+        }
+    }
 }
