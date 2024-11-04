@@ -1,26 +1,20 @@
-mod add;
 mod cpucontext;
 
+use pest::Parser;
+use pest_derive::Parser;
+
+#[derive(Parser)]
+#[grammar = "src/assembly.pest"] // grammar file
+struct AssemblyParser;
+
 fn main() {
-    //let line = "mov ax, 1";
-    println!("Hello, world!");
-    // read a line and call instruction handler
-    let mut test_context = cpucontext::CpuContext::default();
+    let pairs = AssemblyParser::parse(Rule::instruction, "mov ax, bx")
+        .expect("Failed to parse")
+        .next()
+        .unwrap();
 
-    // TODO: make a parser to parse a line into Instruction
-    // mov ax,1
-    let test_inst = cpucontext::Instruction {
-        operation: "mov".to_string(),
-        dest: Some(cpucontext::Operand {
-            field: "ax".to_string(),
-            flag: cpucontext::OperFlag::Reg16,
-        }),
-        src: Some(cpucontext::Operand {
-            field: "1".to_string(),
-            flag: cpucontext::OperFlag::Imm16,
-        }),
-    };
-
-    add::do_add(&mut test_context, &test_inst);
-    println!("{:?}", test_context);
+    for pair in pairs.into_inner() {
+        println!("Rule: {:?}", pair.as_rule());
+        println!("Text: {}", pair.as_str());
+    }
 }
