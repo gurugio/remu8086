@@ -1,4 +1,4 @@
-WHITESPACE = _{ " " | "\t" }
+WHITESPACE = _{ " " }
 NEWLINE = _{ "\n" | "\r\n" }
 COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* }
 
@@ -6,16 +6,16 @@ instruction = _{ mov | add | sub | mul | div | jmp | cmp | label }
 
 program = { SOI ~ (instruction ~ (NEWLINE | COMMENT)*)* ~ EOI }
 
-mov = { "mov" ~ WHITESPACE ~ operand ~ "," ~ WHITESPACE ~ operand }
-add = { "add" ~ WHITESPACE ~ operand ~ "," ~ WHITESPACE ~ operand }
-sub = { "sub" ~ WHITESPACE ~ operand ~ "," ~ WHITESPACE ~ operand }
-mul = { "mul" ~ WHITESPACE ~ operand }
-div = { "div" ~ WHITESPACE ~ operand }
-jmp = { "jmp" ~ WHITESPACE ~ label }
-cmp = { "cmp" ~ WHITESPACE ~ operand ~ "," ~ WHITESPACE ~ operand }
+mov = { "mov" ~ operand ~ "," ~ operand }
+add = { "add" ~ operand ~ "," ~ operand }
+sub = { "sub" ~ operand ~ "," ~ operand }
+mul = { "mul" ~ operand }
+div = { "div" ~ operand }
+jmp = { "jmp" ~ label }
+cmp = { "cmp" ~ operand ~ "," ~ operand }
 
 label = @{ ASCII_ALPHANUMERIC+ ~ ":" }
 operand = { register | number | label }
 
 register = _{ "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
-number = @{ ASCII_DIGIT+ }
+number = @{ "0x" ~ ASCII_DIGIT+ | ASCII_DIGIT+ }
