@@ -11,11 +11,17 @@ add = { "add" ~ operand ~ "," ~ operand }
 sub = { "sub" ~ operand ~ "," ~ operand }
 mul = { "mul" ~ operand }
 div = { "div" ~ operand }
-jmp = { "jmp" ~ label }
+jmp = { "jmp" ~ name }
 cmp = { "cmp" ~ operand ~ "," ~ operand }
 
-label = @{ ASCII_ALPHANUMERIC+ ~ ":" }
-operand = { register | number | label }
+name = { ASCII_ALPHANUMERIC+ }
+label = { ASCII_ALPHANUMERIC+ ~ ":" }
+operand = { register | number }
 
-register = _{ "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
-number = @{ "0x" ~ ASCII_DIGIT+ | ASCII_DIGIT+ }
+/// NOT Silent: Parser generates inner Pair including "rule:register"
+register = { "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
+/// Silent: number is number, NO need to check if it is hex or digit
+number = _{ hex | digit }
+/// Atomic rule: No whitespace between 0x and others
+hex = @{ "0x" ~ (ASCII_DIGIT | "a" | "b" | "c" | "d" | "e" | "f")+ }
+digit = { ASCII_DIGIT+ }
