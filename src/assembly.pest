@@ -20,7 +20,7 @@ operand = { register | number }
 
 /// NOT Silent: Parser generates inner Pair including "rule:register"
 register = { "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
-/// Silent: number is number, NO need to check if it is hex or digit
+/// Silent rule: inner pair has Rule::hex or Rule::digit. inner pari does not have Rule::number.
 number = _{ hex | digit }
 /// Atomic rule: No whitespace between 0x and others
 hex = @{ "0x" ~ (ASCII_DIGIT | "a" | "b" | "c" | "d" | "e" | "f")+ }
