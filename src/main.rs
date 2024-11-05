@@ -7,6 +7,12 @@ use std::fs;
 #[grammar = "assembly.pest"] // grammar file
 struct AssemblyParser;
 
+/// TODO
+/// 1. parse two operands
+/// 2. call handle_mov function in mov.rs file (will be created).
+/// - handle_mov parses the operands and calls mov_reg_reg(), mov_reg_imm() and etc
+/// 3. make parse_add/sub/mul/div/jmp/cmp
+///
 fn parse_mov(operands: &mut Pairs<'_, Rule>) {
     println!("parse_mov");
 
@@ -121,27 +127,45 @@ mod tests {
 
     #[test]
     fn test_instruction() {
-        let instruction = AssemblyParser::parse(Rule::instruction, "mov ax, bx")
+        let instruction = AssemblyParser::parse(Rule::instruction, "mov ax, 0x100")
             .unwrap()
             .next()
             .unwrap();
-        println!(
-            "instruction: rule={:?} text={}",
-            instruction.as_rule(), // mov
-            instruction.as_str()   // mov ax, bx
-        );
-        let mul = AssemblyParser::parse(Rule::mul, "mul ax").unwrap();
-        println!("mul:{}", mul.as_str());
+        assert_eq!(Rule::mov, instruction.as_rule());
+        assert_eq!("mov ax, 0x100", instruction.as_str());
 
         /*
         instruction type is Pair. The into_inner method returns Pairs that is an iterator on Pair of enclosed rules
         mov = { "mov" + operand + ',' + operand } => Enclosed rules are operand and operand.
         So below for loop returns
         Rule: operand Text: ax
-        Rule: operand Text: bx
-         */
+        Rule: operand Text: 0x100
         for pair in instruction.into_inner() {
             println!("operand: Rule: {:?} Text={}", pair.as_rule(), pair.as_str());
         }
+        */
+        let mut inner = instruction.into_inner();
+        let ax = inner.next().unwrap();
+        assert_eq!(Rule::operand, ax.as_rule());
+        assert_eq!("ax", ax.as_str());
+        let ax_inner = ax.into_inner().next().unwrap();
+        assert_eq!(Rule::register, ax_inner.as_rule());
+        assert_eq!("ax", ax_inner.as_str());
+
+        let imm = inner.next().unwrap(); // second operands is imm
+        assert_eq!(Rule::operand, imm.as_rule());
+        assert_eq!("0x100", imm.as_str());
+
+        let imm_inner = imm.into_inner().next().unwrap();
+        assert_eq!(Rule::hex, imm_inner.as_rule());
+        assert_eq!("0x100", imm_inner.as_str());
+
+        // another instruction with a single operand
+        let mul = AssemblyParser::parse(Rule::mul, "mul ax")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::mul, mul.as_rule());
+        assert_eq!("mul ax", mul.as_str());
     }
 }
