@@ -1,3 +1,5 @@
+mod mov;
+
 use pest::iterators::Pairs;
 use pest::Parser;
 use pest_derive::Parser;
@@ -10,27 +12,13 @@ struct AssemblyParser;
 /// 1. parse two operands: operand => register
 /// 2. call handle_mov function in mov.rs file (will be created).
 /// - handle_mov parses the operands and calls mov_reg_reg(), mov_reg_imm() and etc
-/// 3. make parse_add/sub/mul/div/jmp/cmp
+/// 3. make parse_add/sub/mul/div/jmp/cmp => MACRO?????? handle_instruction_two, handle_instruction_one. handle_instruction_zero
 ///
-fn parse_mov(operands: &mut Pairs<'_, Rule>) {
-    println!("parse_mov");
-
+fn parse_mov(operands: &mut Pairs<Rule>) {
     // Below prints each operands as "Operand" but we should know the type of operand: register, imm or label.
     let first_operand = operands.next().unwrap();
-    println!(
-        "first: rule={:?} text={}",
-        first_operand,
-        first_operand.as_str()
-    );
     let second_operand = operands.next().unwrap();
-    println!(
-        "second: rule={:?} text={}",
-        second_operand,
-        second_operand.as_str()
-    );
-
-    let sec = AssemblyParser::parse(Rule::operand, second_operand.as_str()).unwrap();
-    println!("sec={:?}", sec);
+    mov::handle_mov(first_operand, second_operand);
 }
 
 fn main() {
