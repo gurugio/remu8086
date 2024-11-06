@@ -9,17 +9,37 @@ use std::fs;
 #[grammar = "assembly.pest"] // grammar file
 struct AssemblyParser;
 
-/// 1. parse two operands: operand => register
-/// 2. call handle_mov function in mov.rs file (will be created).
-/// - handle_mov parses the operands and calls mov_reg_reg(), mov_reg_imm() and etc
-/// 3. make parse_add/sub/mul/div/jmp/cmp => MACRO?????? handle_instruction_two, handle_instruction_one. handle_instruction_zero
-///
-fn parse_mov(operands: &mut Pairs<Rule>) {
-    // Below prints each operands as "Operand" but we should know the type of operand: register, imm or label.
-    let first_operand = operands.next().unwrap();
-    let second_operand = operands.next().unwrap();
-    mov::handle_mov(first_operand, second_operand);
+#[macro_export]
+macro_rules! call_handler_two {
+    ($mod:ident, $func:ident) => {
+        fn $func(operands: &mut Pairs<Rule>) {
+            let first_operand = operands.next().unwrap();
+            let second_operand = operands.next().unwrap();
+            $mod::$func(first_operand, second_operand);
+        }
+    };
 }
+
+#[macro_export]
+macro_rules! define_handler_two {
+    ($func:ident, $body:block ) => {
+        fn $func(first: Pairs<Rule>, second: Pair<Rule>) {
+            $body
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! handle_instruction_one {
+    ($mod:ident, $func:ident) => {
+        fn $func(operands: &mut Pairs<Rule>) {
+            let first_operand = operands.next().unwrap();
+            $mod::$func(first_operand);
+        }
+    };
+}
+
+handle_instruction_two!(mov, handle_mov);
 
 fn main() {
     let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
@@ -32,7 +52,7 @@ fn main() {
             Rule::mov => {
                 println!("mov:{:?}", line);
                 let mut inner_rule = line.into_inner();
-                parse_mov(&mut inner_rule);
+                handle_mov(&mut inner_rule);
             }
             _ => println!("else:{}", line),
         }
