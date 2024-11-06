@@ -1,5 +1,5 @@
 mov ax, bx
-mov cx, 1234
+mov cx, 0x1234
 add ax, 0xabcd
 sub si, di
 mul cx
