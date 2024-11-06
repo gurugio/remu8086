@@ -2,10 +2,9 @@ WHITESPACE = _{ " " }
 NEWLINE = _{ "\n" | "\r\n" }
 COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* }
 
-instruction = _{ mov | add | sub | mul | div | jmp | cmp | label }
-
 program = { SOI ~ (instruction ~ (NEWLINE | COMMENT)*)* ~ EOI }
 
+instruction = _{ mov | add | sub | mul | div | jmp | cmp | label }
 mov = { "mov" ~ operand ~ "," ~ operand }
 add = { "add" ~ operand ~ "," ~ operand }
 sub = { "sub" ~ operand ~ "," ~ operand }
@@ -16,12 +15,21 @@ cmp = { "cmp" ~ operand ~ "," ~ operand }
 
 name = { ASCII_ALPHANUMERIC+ }
 label = { ASCII_ALPHANUMERIC+ ~ ":" }
-operand = { register | number }
+operand = _{ register | imm | mem }
 
-/// NOT Silent: Parser generates inner Pair including "rule:register"
-register = { "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
-/// Silent rule: inner pair has Rule::hex or Rule::digit. inner pari does not have Rule::number.
-number = _{ hex | digit }
+/// Operand should be parsed into reg8/reg16/imm8/imm16.
+/// So register and number are defined as the silent rule.
+register = _{ reg8 | reg16 }
+reg16 = { "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
+reg8 = { "ah" | "al" | "bh" | "bl" | "ch" | "cl" | "dh" | "dl" }
+
+/// Allow only HEX digit in assembly code
 /// Atomic rule: No whitespace between 0x and others
-hex = @{ "0x" ~ (ASCII_DIGIT | "a" | "b" | "c" | "d" | "e" | "f")+ }
-digit = { ASCII_DIGIT+ }
+imm = @{ "0x" ~ hex+ }
+
+mem = _{ memx | mem8 | mem16 }
+memx = @{ "[" ~ imm ~ "]" }
+mem8 = { "byte ptr" ~ memx }
+mem16 = { "word ptr" ~ memx }
+
+hex = @{ ASCII_DIGIT | "a" | "b" | "c" | "d" | "e" | "f" }
