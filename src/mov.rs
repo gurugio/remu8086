@@ -20,7 +20,17 @@ use pest::iterators::Pair;
 define_handler_two!(handle_mov, first, second, {
     println!("first: rule={:?} text={}", first, first.as_str());
     println!("second: rule={:?} text={}", second, second.as_str());
+
+    match (first.as_rule(), second.as_rule()) {
+        (Rule::reg16, Rule::reg16) => {
+            //println!("reg16: {:?} reg16:{:?}", first.as_rule(), second.as_rule());
+            mov_reg16_reg16(first.as_str(), second.as_str());
+        }
+        _ => println!("Not supported yet:{:?} {:?}", first, second),
+    }
 });
+
+fn mov_reg16_reg16(first: &str, second: &str) {}
 
 #[cfg(test)]
 mod tests {
