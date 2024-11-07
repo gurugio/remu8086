@@ -1,4 +1,5 @@
-use crate::{define_handler_two, Rule}; // define_handler_two uses Rule
+use crate::define_handler_two;
+use crate::parser::Rule;
 use pest::iterators::Pair;
 
 /*
