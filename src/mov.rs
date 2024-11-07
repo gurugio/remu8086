@@ -1,8 +1,7 @@
-use crate::{define_handler_two, Rule};
-use pest::iterators::{Pair, Pairs};
-use pest::Parser;
-use pest_derive::Parser;
+use crate::{define_handler_two, Rule}; // define_handler_two uses Rule
+use pest::iterators::Pair;
 
+/*
 /// MOV r/m8, reg8  $88
 /// MOV r/m16, reg16 $89
 /// MOV AL, mem8 $A0
@@ -15,13 +14,9 @@ use pest_derive::Parser;
 /// MOV r/m16, imm16 $C7, xx000xxx(ModR/M byte)
 /// MOV r/m16,sreg $8C, xx0 sreg xxx(ModR/M byte)
 /// MOV sreg, r/m16 $8E, xx0 sreg xxx(ModR/M byte)
+*/
 
-/*pub fn handle_mov(first: Pair<Rule>, second: Pair<Rule>) {
-    println!("first: rule={:?} text={}", first, first.as_str());
-
-    println!("second: rule={:?} text={}", second, second.as_str());
-}*/
-define_handler_two!(handle_mov, {
+define_handler_two!(handle_mov, first, second, {
     println!("first: rule={:?} text={}", first, first.as_str());
     println!("second: rule={:?} text={}", second, second.as_str());
 });
