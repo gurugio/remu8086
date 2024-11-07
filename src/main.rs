@@ -1,3 +1,4 @@
+mod common;
 mod mov;
 
 use pest::iterators::Pairs;
@@ -9,37 +10,7 @@ use std::fs;
 #[grammar = "assembly.pest"] // grammar file
 struct AssemblyParser;
 
-#[macro_export]
-macro_rules! call_handler_two {
-    ($mod:ident, $func:ident) => {
-        fn $func(operands: &mut Pairs<Rule>) {
-            let first_operand = operands.next().unwrap();
-            let second_operand = operands.next().unwrap();
-            $mod::$func(first_operand, second_operand);
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! define_handler_two {
-    ($func:ident, $body:block ) => {
-        fn $func(first: Pairs<Rule>, second: Pair<Rule>) {
-            $body
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! handle_instruction_one {
-    ($mod:ident, $func:ident) => {
-        fn $func(operands: &mut Pairs<Rule>) {
-            let first_operand = operands.next().unwrap();
-            $mod::$func(first_operand);
-        }
-    };
-}
-
-handle_instruction_two!(mov, handle_mov);
+call_handler_two!(mov, handle_mov);
 
 fn main() {
     let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
