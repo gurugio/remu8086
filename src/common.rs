@@ -1,9 +1,18 @@
 #[macro_export]
-macro_rules! handle_instruction_one {
+macro_rules! call_handler_one {
     ($mod:ident, $func:ident) => {
         fn $func(operands: &mut Pairs<Rule>) {
             let first_operand = operands.next().unwrap();
             $mod::$func(first_operand);
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! define_handler_one {
+    ($func:ident, $first:ident, $body:block) => {
+        pub fn $func($first: Pair<Rule>) {
+            $body
         }
     };
 }
