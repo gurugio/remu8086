@@ -1,4 +1,4 @@
-enum CpuFlag {
+enum _CpuFlag {
     CF,
     ZF,
     SF,
@@ -9,50 +9,50 @@ enum CpuFlag {
 
 #[derive(Default, Debug)]
 pub struct CpuContext {
-    pub ax: u16,
-    pub bx: u16,
-    pub cx: u16,
-    pub dx: u16,
-    pub ip: u16,
-    pub cs: u16,
-    pub flag: u16,
-    /* more */
-}
-
-#[derive(PartialEq, Eq)]
-
-pub enum OperFlag {
-    Reg8,
-    Reg16,
-    Mem8,
-    Mem16,
-    Imm8,
-    Imm16,
-}
-
-pub struct Operand {
-    pub field: String,
-    pub flag: OperFlag,
-}
-
-pub struct Instruction {
-    pub operation: String,
-    pub dest: Option<Operand>,
-    pub src: Option<Operand>,
+    // General Registers
+    _ax: u16,
+    _bx: u16,
+    _cx: u16,
+    _dx: u16,
+    _si: u16,
+    _di: u16,
+    _bp: u16,
+    _sp: u16,
+    // Segment Registers
+    cs: u16,
+    _ds: u16,
+    _es: u16,
+    _ss: u16,
+    // Special Purpose Registers
+    ip: u16,
+    _flag: u16,
 }
 
 impl CpuContext {
-    pub fn read_reg(&self, reg: &str) -> u16 {
-        match reg {
-            "ax" => self.ax,
-            _ => panic!("wrong register"),
-        }
+    /// Creates a just-booted CPU
+    ///
+    /// All registers and flags are cleared.
+    pub fn boot() -> Self {
+        Default::default()
+    }
+    // TODO: set_* functions to set each register16 and register8
+    // set_ax, set_al, set_ah, get_ax, get_al, get_ah
+    // set_bx, ...
+    // For example, "push ax" calls
+    // 1. ss = get_ss, sp = get_sp, ax = get_ax
+    // 2. set_sp(get_sp() - 2)
+    // Initial stack address: ss:sp = 0x0:0x0
+    // First input: ss:sp = 0xf:0xfffe
+    // Second input: ss:sp = 0xf:0xfffc
+    // ....0xf:0x0000
+    // ....0xe:0xfffe
+    // ....when sp gets underflow, ss is decreased.
+    // 3. [ss:sp] = ax
+    pub fn set_ip(&mut self, v: u16) {
+        self.ip = v;
     }
 
-    pub fn write_reg(&mut self, reg: &str, val: u16) {
-        match reg {
-            "ax" => self.ax = val,
-            _ => panic!("wrong register"),
-        }
+    pub fn set_cs(&mut self, v: u16) {
+        self.cs = v;
     }
 }

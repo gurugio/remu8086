@@ -4,15 +4,18 @@ mod mov;
 mod org;
 mod parser;
 
+use cpucontext::CpuContext;
 use parser::Rule;
 use pest::iterators::Pairs;
 use pest::Parser;
 use std::fs;
 
-call_handler_two!(mov, handle_mov);
-call_handler_one!(org, handle_org);
+define_caller_two!(mov, handle_mov, cpu);
+define_caller_one!(org, handle_org, cpu);
 
 fn main() {
+    let mut cpu: cpucontext::CpuContext = cpucontext::CpuContext::boot();
+
     let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
     let file = parser::AssemblyParser::parse(parser::Rule::program, &unparsed_file)
         .expect("Failed to parse a file with Rule::program rule") // unwrap the parse result
@@ -23,11 +26,11 @@ fn main() {
             parser::Rule::mov => {
                 //println!("mov:{:?}", line);
                 let mut inner_rule = line.into_inner();
-                handle_mov(&mut inner_rule);
+                handle_mov(&mut cpu, &mut inner_rule);
             }
             parser::Rule::org => {
                 let mut inner_rule = line.into_inner();
-                handle_org(&mut inner_rule);
+                handle_org(&mut cpu, &mut inner_rule);
             }
             _ => println!("else:{}", line),
         }
