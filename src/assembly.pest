@@ -25,7 +25,8 @@ reg8 = { "ah" | "al" | "bh" | "bl" | "ch" | "cl" | "dh" | "dl" }
 
 /// Allow only HEX digit in assembly code
 /// Atomic rule: No whitespace between 0x and others
-imm = @{ "0x" ~ hex+ }
+/// Three hex digit form: 0xabcd, 0abcdh, 1abch
+imm = @{ "0x" ~ hex+ | "0" ~ ("a" | "b" | "c" | "d" | "e" | "f")+ ~ hex* ~ "h" | ASCII_DIGIT ~ hex* ~ "h" }
 
 mem = _{ memx | mem8 | mem16 }
 memx = @{ "[" ~ imm ~ "]" }
