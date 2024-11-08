@@ -4,7 +4,7 @@ COMMENT = _{ ";" ~ (!NEWLINE ~ ANY)* }
 
 program = { SOI ~ (instruction ~ (NEWLINE | COMMENT)*)* ~ EOI }
 
-instruction = _{ mov | add | sub | mul | div | jmp | cmp | label }
+instruction = _{ mov | add | sub | mul | div | jmp | cmp | label | org }
 mov = { "mov" ~ operand ~ "," ~ operand }
 add = { "add" ~ operand ~ "," ~ operand }
 sub = { "sub" ~ operand ~ "," ~ operand }
@@ -12,12 +12,13 @@ mul = { "mul" ~ operand }
 div = { "div" ~ operand }
 jmp = { "jmp" ~ name }
 cmp = { "cmp" ~ operand ~ "," ~ operand }
+org = { "org" ~ imm }
 
 name = { ASCII_ALPHANUMERIC+ }
 label = { ASCII_ALPHANUMERIC+ ~ ":" }
 operand = _{ register | imm | mem }
 
-/// Operand should be parsed into reg8/reg16/imm8/imm16.
+/// Operand should be parsed into reg8/reg16/imm.
 /// So register and number are defined as the silent rule.
 register = _{ reg8 | reg16 }
 reg16 = { "ax" | "bx" | "cx" | "dx" | "sp" | "bp" | "si" | "di" | "cs" | "ds" | "es" | "ss" }
