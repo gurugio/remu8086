@@ -21,6 +21,20 @@ mod tests {
             .unwrap();
         assert_eq!(Rule::imm, hex.as_rule());
         assert_eq!("0x1234", hex.as_str());
+
+        let hex = AssemblyParser::parse(Rule::imm, "0abcdh")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::imm, hex.as_rule());
+        assert_eq!("0abcdh", hex.as_str());
+
+        let hex = AssemblyParser::parse(Rule::imm, "1abch")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::imm, hex.as_rule());
+        assert_eq!("1abch", hex.as_str());
     }
 
     #[test]
