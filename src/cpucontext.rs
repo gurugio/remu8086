@@ -31,9 +31,14 @@ pub struct CpuContext {
 impl CpuContext {
     /// Creates a just-booted CPU
     ///
-    /// All registers and flags are cleared.
+    /// All registers and flags are cleared except cs.
+    /// cs:ip=0xffff:0 is a location of BIOS.
     pub fn boot() -> Self {
-        Default::default()
+        CpuContext {
+            cs: 0xffff,
+            ip: 0,
+            ..Default::default()
+        }
     }
     // TODO: set_* functions to set each register16 and register8
     // set_ax, set_al, set_ah, get_ax, get_al, get_ah
