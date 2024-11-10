@@ -4,13 +4,12 @@ e.g. [<caller_ $mod>] => caller_mov
 */
 
 #[macro_export]
-macro_rules! define_caller_one {
-    ($mod:ident, $cpu:ident) => {
+macro_rules! caller_one {
+    ($mod:ident, $cpu:ident, $pairs:ident) => {
         paste! {
-            fn [<caller_ $mod>]($cpu: &mut CpuContext, operands: &mut Pairs<Rule>) {
-                let first_operand = operands.next().unwrap();
-                $mod::[<handler_ $mod>]($cpu, first_operand);
-            }
+            let mut inner_rule = $pairs.into_inner();
+            let first_operand = inner_rule.next().unwrap();
+            $mod::[<handler_ $mod>](&mut $cpu, first_operand);
         }
     };
 }
@@ -27,14 +26,13 @@ macro_rules! define_handler_one {
 }
 
 #[macro_export]
-macro_rules! define_caller_two {
-    ($mod:ident, $cpu:ident) => {
+macro_rules! caller_two {
+    ($mod:ident, $cpu:ident, $pairs:ident) => {
         paste! {
-            fn [<caller_ $mod>]($cpu: &mut CpuContext, operands: &mut Pairs<Rule>) {
-                let first_operand = operands.next().unwrap();
-                let second_operand = operands.next().unwrap();
-                $mod::[<handler_ $mod>]($cpu, first_operand, second_operand);
-            }
+            let mut inner_rule = $pairs.into_inner();
+            let first_operand = inner_rule.next().unwrap();
+            let second_operand = inner_rule.next().unwrap();
+            $mod::[<handler_ $mod>](&mut $cpu, first_operand, second_operand);
         }
     };
 }
