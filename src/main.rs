@@ -11,9 +11,6 @@ use pest::iterators::Pairs;
 use pest::Parser;
 use std::fs;
 
-define_caller_two!(mov, cpu);
-define_caller_one!(org, cpu);
-
 fn main() {
     let mut cpu: cpucontext::CpuContext = cpucontext::CpuContext::boot();
 
@@ -25,12 +22,10 @@ fn main() {
     for line in file.into_inner() {
         match line.as_rule() {
             parser::Rule::mov => {
-                let mut inner_rule = line.into_inner();
-                caller_mov(&mut cpu, &mut inner_rule);
+                caller_two!(mov, cpu, line);
             }
             parser::Rule::org => {
-                let mut inner_rule = line.into_inner();
-                caller_org(&mut cpu, &mut inner_rule);
+                caller_one!(org, cpu, line);
             }
             _ => println!("else:{}", line),
         }
