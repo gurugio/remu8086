@@ -5,10 +5,10 @@ macro_rules! setter_and_getter_reg {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
-                pub fn [<set_ $reg>](&mut self, v: u16) {
+                fn [<set_ $reg>](&mut self, v: u16) {
                     self.$reg = v;
                 }
-                pub fn [<get_ $reg>](&self) -> u16 {
+                fn [<get_ $reg>](&self) -> u16 {
                     self.$reg
                 }
             )+
@@ -71,7 +71,33 @@ impl CpuContext {
     // ....0xe:0xfffe
     // ....when sp gets underflow, ss is decreased.
     // 3. [ss:sp] = ax
-    setter_and_getter_reg!(cs, ip);
+    setter_and_getter_reg!(ax, bx, cx, dx, cs, ip);
+
+    pub fn get_register(&self, reg: &str) -> Result<u16, String> {
+        let r = match reg {
+            "ax" => self.get_ax(),
+            "bx" => self.get_bx(),
+            "cx" => self.get_cx(),
+            "dx" => self.get_dx(),
+            "cs" => self.get_cs(),
+            "ip" => self.get_ip(),
+            _ => return Err("Wrong register specified for get_register".to_string()),
+        };
+        Ok(r)
+    }
+
+    pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
+        match reg {
+            "ax" => self.set_ax(v),
+            "bx" => self.set_bx(v),
+            "cx" => self.set_cx(v),
+            "dx" => self.set_dx(v),
+            "cs" => self.set_cs(v),
+            "ip" => self.set_ip(v),
+            _ => return Err("Wrong register specified for set_register".to_string()),
+        };
+        Ok(())
+    }
 }
 
 impl fmt::Debug for CpuContext {
@@ -79,10 +105,10 @@ impl fmt::Debug for CpuContext {
         write!(
             f,
             "CpuContext {{\n\
-             \t_ax: 0x{:04X}, _bx: 0x{:04X}, _cx: 0x{:04X}, _dx: 0x{:04X},\n\
-             \t_si: 0x{:04X}, _di: 0x{:04X}, _bp: 0x{:04X}, _sp: 0x{:04X},\n\
-             \tcs: 0x{:04X}, _ds: 0x{:04X}, _es: 0x{:04X}, _ss: 0x{:04X},\n\
-             \tip: 0x{:04X}, _flag: 0x{:04X}\n\
+             \t_ax: 0x{:04X}, bx: 0x{:04X}, cx: 0x{:04X}, dx: 0x{:04X},\n\
+             \t_si: 0x{:04X}, di: 0x{:04X}, bp: 0x{:04X}, sp: 0x{:04X},\n\
+             \tcs: 0x{:04X}, ds: 0x{:04X}, es: 0x{:04X}, ss: 0x{:04X},\n\
+             \tip: 0x{:04X}, flag: 0x{:04X}\n\
              }}",
             self.ax,
             self.bx,
