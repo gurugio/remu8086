@@ -1,3 +1,21 @@
+use paste::paste;
+use std::fmt;
+
+macro_rules! setter_and_getter_reg {
+    ( $($reg:ident),+ ) => {
+        paste! {
+            $(
+            pub fn [<set_ $reg>](&mut self, v: u16) {
+                self.$reg = v;
+            }
+            pub fn [<get_ $reg>](&self) -> u16 {
+                self.$reg
+            }
+            )+
+        }
+    };
+}
+
 enum _CpuFlag {
     CF,
     ZF,
@@ -7,25 +25,25 @@ enum _CpuFlag {
     DF, // direction
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct CpuContext {
     // General Registers
-    _ax: u16,
-    _bx: u16,
-    _cx: u16,
-    _dx: u16,
-    _si: u16,
-    _di: u16,
-    _bp: u16,
-    _sp: u16,
+    ax: u16,
+    bx: u16,
+    cx: u16,
+    dx: u16,
+    si: u16,
+    di: u16,
+    bp: u16,
+    sp: u16,
     // Segment Registers
     cs: u16,
-    _ds: u16,
-    _es: u16,
-    _ss: u16,
+    ds: u16,
+    es: u16,
+    ss: u16,
     // Special Purpose Registers
     ip: u16,
-    _flag: u16,
+    flag: u16,
 }
 
 impl CpuContext {
@@ -53,11 +71,33 @@ impl CpuContext {
     // ....0xe:0xfffe
     // ....when sp gets underflow, ss is decreased.
     // 3. [ss:sp] = ax
-    pub fn set_ip(&mut self, v: u16) {
-        self.ip = v;
-    }
+    setter_and_getter_reg!(cs, ip);
+}
 
-    pub fn set_cs(&mut self, v: u16) {
-        self.cs = v;
+impl fmt::Debug for CpuContext {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "CpuContext {{\n\
+             \t_ax: 0x{:04X}, _bx: 0x{:04X}, _cx: 0x{:04X}, _dx: 0x{:04X},\n\
+             \t_si: 0x{:04X}, _di: 0x{:04X}, _bp: 0x{:04X}, _sp: 0x{:04X},\n\
+             \tcs: 0x{:04X}, _ds: 0x{:04X}, _es: 0x{:04X}, _ss: 0x{:04X},\n\
+             \tip: 0x{:04X}, _flag: 0x{:04X}\n\
+             }}",
+            self.ax,
+            self.bx,
+            self.cx,
+            self.dx,
+            self.si,
+            self.di,
+            self.bp,
+            self.sp,
+            self.cs,
+            self.ds,
+            self.es,
+            self.ss,
+            self.ip,
+            self.flag
+        )
     }
 }

@@ -1,3 +1,4 @@
+use pest::iterators::Pair;
 use pest_derive::Parser;
 
 /*
@@ -6,6 +7,25 @@ This derive(Parser) generates Rule implicitly.
 #[derive(Parser)]
 #[grammar = "assembly.pest"] // grammar file
 pub struct AssemblyParser;
+
+// Separate function for unittest
+fn _imm_to_num(s: &str) -> Result<u16, String> {
+    if s.starts_with("0x") {
+        u16::from_str_radix(&s[2..], 16).map_err(|_| "Invalid hex number".to_string())
+    } else if s.ends_with('h') {
+        u16::from_str_radix(&s[..s.len() - 1], 16).map_err(|_| "Invalid hex number".to_string())
+    } else {
+        Err("imm is not a valid hex format".to_string())
+    }
+}
+
+pub fn imm_to_num(s: Pair<Rule>) -> Result<u16, String> {
+    // Three imm forms: 0x1234, 0abcdh, 1abch
+    if s.as_rule() != Rule::imm {
+        return Err("Tried to parse something else imm".to_string());
+    }
+    _imm_to_num(s.as_str())
+}
 
 #[cfg(test)]
 mod tests {
@@ -204,5 +224,15 @@ mod tests {
         assert_eq!(Rule::add, add.as_rule());
         let jmp = lines.next().unwrap();
         assert_eq!(Rule::jmp, jmp.as_rule());
+    }
+
+    #[test]
+    fn test_imm_to_num() {
+        assert_eq!(Ok(0x1a3), _imm_to_num("0x1a3"));
+        assert_eq!(Ok(0x123), _imm_to_num("123h"));
+        assert_eq!(Ok(0xabc), _imm_to_num("0abch"));
+        assert_eq!(Ok(0x45), _imm_to_num("045h"));
+
+        assert_eq!(Err("Invalid hex number".to_owned()), _imm_to_num("0xghi"));
     }
 }
