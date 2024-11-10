@@ -19,7 +19,7 @@ fn _imm_to_num(s: &str) -> Result<u16, String> {
     }
 }
 
-pub fn imm_to_num(s: Pair<Rule>) -> Result<u16, String> {
+pub fn imm_to_num(s: &Pair<Rule>) -> Result<u16, String> {
     // Three imm forms: 0x1234, 0abcdh, 1abch
     if s.as_rule() != Rule::imm {
         return Err("Tried to parse something else imm".to_string());

@@ -1,4 +1,4 @@
-use crate::parser::Rule;
+use crate::parser::{imm_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_two};
 use paste::paste;
 use pest::iterators::Pair;
@@ -19,20 +19,18 @@ use pest::iterators::Pair;
 */
 
 define_handler_two!(mov, first, second, cpu, {
-    println!("first: rule={:?} text={}", first, first.as_str());
-    println!("second: rule={:?} text={}", second, second.as_str());
-    println!("current cpu={:?}", cpu);
-
     match (first.as_rule(), second.as_rule()) {
         (Rule::reg16, Rule::reg16) => {
-            //println!("reg16: {:?} reg16:{:?}", first.as_rule(), second.as_rule());
-            mov_reg16_reg16(first.as_str(), second.as_str());
+            cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
+                .unwrap();
+        }
+        (Rule::reg16, Rule::imm) => {
+            let v = imm_to_num(&second).unwrap();
+            cpu.set_register(first.as_str(), v).unwrap();
         }
         _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
 });
-
-fn mov_reg16_reg16(_first: &str, _second: &str) {}
 
 #[cfg(test)]
 mod tests {

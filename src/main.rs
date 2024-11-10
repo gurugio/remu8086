@@ -20,6 +20,7 @@ fn main() {
         .next()
         .unwrap(); // get and unwrap the `file` rule; never fails
     for line in file.into_inner() {
+        println!("Execute:{}", line.as_str());
         match line.as_rule() {
             parser::Rule::mov => {
                 caller_two!(mov, cpu, line);
@@ -27,7 +28,8 @@ fn main() {
             parser::Rule::org => {
                 caller_one!(org, cpu, line);
             }
-            _ => println!("else:{}", line),
+            _ => println!("NOT implemented yet:{}", line),
         }
+        println!("{:?}", cpu);
     }
 }
