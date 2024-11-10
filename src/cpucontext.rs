@@ -5,12 +5,12 @@ macro_rules! setter_and_getter_reg {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
-            pub fn [<set_ $reg>](&mut self, v: u16) {
-                self.$reg = v;
-            }
-            pub fn [<get_ $reg>](&self) -> u16 {
-                self.$reg
-            }
+                pub fn [<set_ $reg>](&mut self, v: u16) {
+                    self.$reg = v;
+                }
+                pub fn [<get_ $reg>](&self) -> u16 {
+                    self.$reg
+                }
             )+
         }
     };

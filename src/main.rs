@@ -6,12 +6,13 @@ mod parser;
 
 use cpucontext::CpuContext;
 use parser::Rule;
+use paste::paste;
 use pest::iterators::Pairs;
 use pest::Parser;
 use std::fs;
 
-define_caller_two!(mov, handle_mov, cpu);
-define_caller_one!(org, handle_org, cpu);
+define_caller_two!(mov, cpu);
+define_caller_one!(org, cpu);
 
 fn main() {
     let mut cpu: cpucontext::CpuContext = cpucontext::CpuContext::boot();
@@ -24,13 +25,12 @@ fn main() {
     for line in file.into_inner() {
         match line.as_rule() {
             parser::Rule::mov => {
-                //println!("mov:{:?}", line);
                 let mut inner_rule = line.into_inner();
-                handle_mov(&mut cpu, &mut inner_rule);
+                caller_mov(&mut cpu, &mut inner_rule);
             }
             parser::Rule::org => {
                 let mut inner_rule = line.into_inner();
-                handle_org(&mut cpu, &mut inner_rule);
+                caller_org(&mut cpu, &mut inner_rule);
             }
             _ => println!("else:{}", line),
         }

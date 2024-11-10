@@ -1,5 +1,6 @@
 use crate::parser::Rule;
 use crate::{cpucontext::CpuContext, define_handler_two};
+use paste::paste;
 use pest::iterators::Pair;
 
 /*
@@ -17,7 +18,7 @@ use pest::iterators::Pair;
 /// MOV sreg, r/m16 $8E, xx0 sreg xxx(ModR/M byte)
 */
 
-define_handler_two!(handle_mov, first, second, cpu, {
+define_handler_two!(mov, first, second, cpu, {
     println!("first: rule={:?} text={}", first, first.as_str());
     println!("second: rule={:?} text={}", second, second.as_str());
     println!("current cpu={:?}", cpu);

@@ -1,12 +1,13 @@
 use crate::parser::{imm_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_one};
+use paste::paste;
 use pest::iterators::Pair;
 
 /*
 org 100h
 */
 
-define_handler_one!(handle_org, first, cpu, {
+define_handler_one!(org, first, cpu, {
     println!("current cpu={:?}", cpu);
     match first.as_rule() {
         Rule::imm => {
