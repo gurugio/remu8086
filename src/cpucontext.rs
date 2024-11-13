@@ -52,8 +52,9 @@ const SF: u16 = 7; // Sign: 1=negative, 0=positive
 const SF_MASK: u16 = 1 << SF;
 const IF: u16 = 9;
 const IF_MASK: u16 = 1 << IF;
-const DF: u16 = 10; // direction: 1=down, 0=up
-const DF_MASK: u16 = 1 << DF;
+// DF: NOT supported yet
+const _DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
+const _DF_MASK: u16 = 1 << _DF;
 const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
 const OF_MASK: u16 = 1 << OF;
 
@@ -103,9 +104,9 @@ impl CpuContext {
     // ....0xe:0xfffe
     // ....when sp gets underflow, ss is decreased.
     // 3. [ss:sp] = ax
-    setter_and_getter_reg!(ax, bx, cx, dx, cs, ip);
+    setter_and_getter_reg!(ax, bx, cx, dx, si, di, cs, ip);
 
-    setter_and_resetter_flag!(CF, PF, _AC, ZF, SF, IF, DF, OF);
+    setter_and_resetter_flag!(CF, PF, ZF, SF, IF, OF);
 
     pub fn get_register(&self, reg: &str) -> Result<u16, String> {
         let r = match reg {
@@ -113,6 +114,8 @@ impl CpuContext {
             "bx" => self.get_bx(),
             "cx" => self.get_cx(),
             "dx" => self.get_dx(),
+            "si" => self.get_si(),
+            "di" => self.get_di(),
             "cs" => self.get_cs(),
             "ip" => self.get_ip(),
             _ => return Err("Wrong register specified for get_register".to_string()),
@@ -120,15 +123,26 @@ impl CpuContext {
         Ok(r)
     }
 
+    fn is_general_reg(&self, reg: &str) -> bool {
+        match reg {
+            "ax" | "bx" | "cx" | "dx" | "si" | "di" => true,
+            _ => false,
+        }
+    }
+
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
         // Flags is changed according to both of the old value of the target register and the new value.
-        self.change_flags(reg, v);
+        if self.is_general_reg(reg) {
+            self.change_flags(reg, v);
+        }
 
         match reg {
             "ax" => self.set_ax(v),
             "bx" => self.set_bx(v),
             "cx" => self.set_cx(v),
             "dx" => self.set_dx(v),
+            "si" => self.set_si(v),
+            "di" => self.set_di(v),
             "cs" => self.set_cs(v),
             "ip" => self.set_ip(v),
             _ => return Err("Wrong register specified for set_register".to_string()),
@@ -136,6 +150,13 @@ impl CpuContext {
         Ok(())
     }
 
+    /// Change some flags changed by all instruction
+    ///
+    /// This function is called in set_register function. So this function changes
+    /// the flags that can be changed by all instruction.
+    /// CF and OF are changed by each instruction handlers: mov, add, sub, stc, clc, cmc and so on.
+    /// IF is changed by STI/CLI
+    ///
     fn change_flags(&mut self, reg: &str, v: u16) {
         // Set flag according to change from old to new
         //CF, // Carry: 1=carry, 0=no-carry
@@ -205,13 +226,13 @@ mod tests {
         assert_eq!(CF_MASK, cpu.flags);
         cpu.set_PF();
         assert_eq!(CF_MASK | PF_MASK, cpu.flags);
-        cpu.set_DF();
-        assert_eq!(CF_MASK | PF_MASK | DF_MASK, cpu.flags);
+        cpu.set_OF();
+        assert_eq!(CF_MASK | PF_MASK | OF_MASK, cpu.flags);
         cpu.reset_CF();
-        assert_eq!(PF_MASK | DF_MASK, cpu.flags);
+        assert_eq!(PF_MASK | OF_MASK, cpu.flags);
         cpu.reset_PF();
-        assert_eq!(DF_MASK, cpu.flags);
-        cpu.reset_DF();
+        assert_eq!(OF_MASK, cpu.flags);
+        cpu.reset_OF();
         assert_eq!(0, cpu.flags);
     }
 }
