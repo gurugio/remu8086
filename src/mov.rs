@@ -38,5 +38,5 @@ mod tests {
     //use super::*;
 
     #[test]
-    fn test_imm() {}
+    fn test_mov_flags() {}
 }
