@@ -1,13 +1,11 @@
+mod add;
 mod common;
 mod cpucontext;
 mod mov;
 mod org;
 mod parser;
 
-use cpucontext::CpuContext;
-use parser::Rule;
 use paste::paste;
-use pest::iterators::Pairs;
 use pest::Parser;
 use std::fs;
 
@@ -27,6 +25,9 @@ fn main() {
             }
             parser::Rule::org => {
                 caller_one!(org, cpu, line);
+            }
+            parser::Rule::add => {
+                caller_two!(add, cpu, line);
             }
             _ => println!("NOT implemented yet:{}", line),
         }

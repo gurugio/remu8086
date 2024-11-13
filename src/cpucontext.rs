@@ -1,3 +1,4 @@
+use crate::common::count_bit;
 use paste::paste;
 use std::fmt;
 
@@ -16,14 +17,45 @@ macro_rules! setter_and_getter_reg {
     };
 }
 
-enum _CpuFlag {
-    CF,
-    ZF,
-    SF,
-    OF,
-    PF,
-    DF, // direction
+macro_rules! setter_and_resetter_flag {
+    ( $($flag:ident),+ ) => {
+        paste! {
+            $(
+                #[allow(non_snake_case)]
+                fn [<set_ $flag>](&mut self) {
+                    self.flags |= [<$flag _MASK>];
+                }
+
+                #[allow(non_snake_case)]
+                fn [<reset_ $flag>](&mut self) {
+                    self.flags &= ![<$flag _MASK>];
+                }
+            )+
+        }
+    };
 }
+
+/*
+reference: https://www.geeksforgeeks.org/flag-register-8086-microprocessor/
+*/
+
+const CF: u16 = 0; // Carry: 1=carry, 0=no-carry
+const CF_MASK: u16 = 1 << CF;
+const PF: u16 = 2; // Parity: 1=even, 0=odd
+const PF_MASK: u16 = 1 << PF;
+// AC: NOT supported yet
+const _AC: u16 = 4;
+const _AC_MASK: u16 = 1 << _AC;
+const ZF: u16 = 6; // Zero: 1=zero, 0=non-zero
+const ZF_MASK: u16 = 1 << ZF;
+const SF: u16 = 7; // Sign: 1=negative, 0=positive
+const SF_MASK: u16 = 1 << SF;
+const IF: u16 = 9;
+const IF_MASK: u16 = 1 << IF;
+const DF: u16 = 10; // direction: 1=down, 0=up
+const DF_MASK: u16 = 1 << DF;
+const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
+const OF_MASK: u16 = 1 << OF;
 
 #[derive(Default)]
 pub struct CpuContext {
@@ -43,7 +75,7 @@ pub struct CpuContext {
     ss: u16,
     // Special Purpose Registers
     ip: u16,
-    flag: u16,
+    flags: u16,
 }
 
 impl CpuContext {
@@ -73,6 +105,8 @@ impl CpuContext {
     // 3. [ss:sp] = ax
     setter_and_getter_reg!(ax, bx, cx, dx, cs, ip);
 
+    setter_and_resetter_flag!(CF, PF, _AC, ZF, SF, IF, DF, OF);
+
     pub fn get_register(&self, reg: &str) -> Result<u16, String> {
         let r = match reg {
             "ax" => self.get_ax(),
@@ -87,6 +121,9 @@ impl CpuContext {
     }
 
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
+        // Flags is changed according to both of the old value of the target register and the new value.
+        self.change_flags(reg, v);
+
         match reg {
             "ax" => self.set_ax(v),
             "bx" => self.set_bx(v),
@@ -98,6 +135,34 @@ impl CpuContext {
         };
         Ok(())
     }
+
+    fn change_flags(&mut self, reg: &str, v: u16) {
+        // Set flag according to change from old to new
+        //CF, // Carry: 1=carry, 0=no-carry
+        //ZF, // Zero: 1=zero, 0=non-zero
+        //SF, // Sign: 1=negative, 0=positive
+        //OF, // Overflow: 1=overflow, 0=not-overflow
+        //PF, // Parity: 1=even, 0=odd
+        //DF, // direction: 1=down, 0=up
+
+        if v & 0x1000 != 0 {
+            self.set_SF();
+        } else {
+            self.reset_SF();
+        }
+
+        if count_bit(v) & 0x1 == 0 {
+            self.set_PF();
+        } else {
+            self.reset_PF();
+        }
+
+        if v == 0 {
+            self.set_ZF();
+        } else {
+            self.reset_ZF();
+        }
+    }
 }
 
 impl fmt::Debug for CpuContext {
@@ -108,7 +173,7 @@ impl fmt::Debug for CpuContext {
              \t_ax: 0x{:04X}, bx: 0x{:04X}, cx: 0x{:04X}, dx: 0x{:04X},\n\
              \t_si: 0x{:04X}, di: 0x{:04X}, bp: 0x{:04X}, sp: 0x{:04X},\n\
              \tcs: 0x{:04X}, ds: 0x{:04X}, es: 0x{:04X}, ss: 0x{:04X},\n\
-             \tip: 0x{:04X}, flag: 0x{:04X}\n\
+             \tip: 0x{:04X}, flags: 0x{:04X}\n\
              }}",
             self.ax,
             self.bx,
@@ -123,7 +188,30 @@ impl fmt::Debug for CpuContext {
             self.es,
             self.ss,
             self.ip,
-            self.flag
+            self.flags
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_cpu_flags() {
+        let mut cpu: CpuContext = CpuContext::boot();
+        cpu.set_CF();
+        assert_eq!(CF_MASK, cpu.flags);
+        cpu.set_PF();
+        assert_eq!(CF_MASK | PF_MASK, cpu.flags);
+        cpu.set_DF();
+        assert_eq!(CF_MASK | PF_MASK | DF_MASK, cpu.flags);
+        cpu.reset_CF();
+        assert_eq!(PF_MASK | DF_MASK, cpu.flags);
+        cpu.reset_PF();
+        assert_eq!(DF_MASK, cpu.flags);
+        cpu.reset_DF();
+        assert_eq!(0, cpu.flags);
     }
 }
