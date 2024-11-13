@@ -47,3 +47,36 @@ macro_rules! define_handler_two {
         }
     };
 }
+
+pub fn count_bit(v: u16) -> i32 {
+    let mut c = 0;
+    let mut v = v;
+
+    while v != 0 {
+        if v & 0x1 != 0 {
+            c += 1;
+        }
+        v >>= 1;
+    }
+
+    c
+}
+
+#[cfg(test)]
+mod tests {
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+
+    #[test]
+    fn test_count_bit() {
+        let v = vec![
+            0, 1, 2, 3, 4, 5, 6, 7, 0x1000, 0x2000, 0x3000, 0x4000, 0x5000, 0x6000, 0x7000, 0xffff,
+        ];
+        let r = vec![0, 1, 1, 2, 1, 2, 2, 3, 1, 1, 2, 1, 2, 2, 3, 16];
+
+        for i in 0..v.len() {
+            println!("v={}", v[i]);
+            assert_eq!(r[i], count_bit(v[i]));
+        }
+    }
+}

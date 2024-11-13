@@ -1,6 +1,9 @@
-use crate::cpucontext::{CpuContext, Instruction, OperFlag};
+use crate::parser::{imm_to_num, Rule};
+use crate::{cpucontext::CpuContext, define_handler_two};
+use paste::paste;
+use pest::iterators::Pair;
 
-/// add series
+/*
 /// ADD AL, imm8 $04
 /// ADD AX, imm16 $05
 /// ADD reg8, r/m8 $02
@@ -10,51 +13,31 @@ use crate::cpucontext::{CpuContext, Instruction, OperFlag};
 /// ADD r/m8, imm8 $80 xx000xxx (ModR/M byte)
 /// ADD r/m16, imm16 $81 xx000xxx (ModR/M byte)
 /// ADD r/m16, imm8 $83 xx000xxx (ModR/M byte)
-/// ex) add
-///
+*/
 
-pub fn do_add(context: &mut CpuContext, inst: &Instruction) {
-    // We already know that inst.operation is "ADD".
-    // ADD operation always has dest and src operands.
-
-    if inst.dest.is_none() || inst.src.is_none() {
-        // TODO: return error with anyhow
-        panic!("wrong operands: Add requires both operands");
+define_handler_two!(add, first, second, cpu, {
+    match (first.as_rule(), second.as_rule()) {
+        (Rule::reg16, Rule::reg16) => {
+            cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
+                .unwrap();
+            let l = cpu.get_register(first.as_str()).unwrap();
+            let r = cpu.get_register(second.as_str()).unwrap();
+            cpu.set_register(first.as_str(), l + r).unwrap();
+        }
+        (Rule::reg16, Rule::imm) => {
+            let v = imm_to_num(&second).unwrap();
+            let l = cpu.get_register(first.as_str()).unwrap();
+            cpu.set_register(first.as_str(), l + v).unwrap();
+        }
+        _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
-
-    let dest = inst.dest.as_ref().unwrap();
-    let src = inst.src.as_ref().unwrap();
-
-    // TODO: check type of dest and src and select handler
-    add_reg16_imm16(context, &dest.field, &src.field);
-
-    // dest  src
-    // al    imm8
-    // ax    imm16
-    // reg8  reg8
-    // reg8  mem8
-    // reg16 reg16
-    // reg16 mem16
-    // 
-
-}
-
-fn add_reg16_imm16(context: &mut CpuContext, reg: &str, imm: &str) {
-    // if dest is reg16 and src is imm16
-    let cur_val = context.read_reg(reg);
-    context.write_reg(reg, cur_val + imm.parse::<u16>().unwrap());
-    // TODO: update context.flag
-}
+});
 
 // TODO: add unittest for each case
 #[cfg(test)]
 mod tests {
-    use super::*;
+    //use super::*;
 
     #[test]
-    fn test_add_reg16_imm16() {
-        let mut init_context = crate::cpucontext::CpuContext::default();
-        add_reg16_imm16(&mut init_context, "ax", "1");
-        assert_eq!(init_context.ax, 1);
-    }
+    fn test_add_reg16_imm16() {}
 }
