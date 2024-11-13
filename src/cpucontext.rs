@@ -39,24 +39,24 @@ macro_rules! setter_and_resetter_flag {
 reference: https://www.geeksforgeeks.org/flag-register-8086-microprocessor/
 */
 
-const CF: u16 = 0; // Carry: 1=carry, 0=no-carry
-const CF_MASK: u16 = 1 << CF;
+//const CF: u16 = 0; // Carry: 1=carry, 0=no-carry
+//const CF_MASK: u16 = 1 << CF;
 const PF: u16 = 2; // Parity: 1=even, 0=odd
 const PF_MASK: u16 = 1 << PF;
 // AC: NOT supported yet
-const _AC: u16 = 4;
-const _AC_MASK: u16 = 1 << _AC;
+//const _AC: u16 = 4;
+//const _AC_MASK: u16 = 1 << _AC;
 const ZF: u16 = 6; // Zero: 1=zero, 0=non-zero
 const ZF_MASK: u16 = 1 << ZF;
 const SF: u16 = 7; // Sign: 1=negative, 0=positive
 const SF_MASK: u16 = 1 << SF;
-const IF: u16 = 9;
-const IF_MASK: u16 = 1 << IF;
+//const IF: u16 = 9;
+//const IF_MASK: u16 = 1 << IF;
 // DF: NOT supported yet
-const _DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
-const _DF_MASK: u16 = 1 << _DF;
-const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
-const OF_MASK: u16 = 1 << OF;
+//const DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
+//const DF_MASK: u16 = 1 << DF;
+//const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
+//const OF_MASK: u16 = 1 << OF;
 
 #[derive(Default)]
 pub struct CpuContext {
@@ -106,7 +106,7 @@ impl CpuContext {
     // 3. [ss:sp] = ax
     setter_and_getter_reg!(ax, bx, cx, dx, si, di, cs, ip);
 
-    setter_and_resetter_flag!(CF, PF, ZF, SF, IF, OF);
+    setter_and_resetter_flag!(PF, ZF, SF);
 
     pub fn get_register(&self, reg: &str) -> Result<u16, String> {
         let r = match reg {
@@ -133,7 +133,7 @@ impl CpuContext {
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
         // Flags is changed according to both of the old value of the target register and the new value.
         if self.is_general_reg(reg) {
-            self.change_flags(reg, v);
+            self.change_flags(v);
         }
 
         match reg {
@@ -157,7 +157,7 @@ impl CpuContext {
     /// CF and OF are changed by each instruction handlers: mov, add, sub, stc, clc, cmc and so on.
     /// IF is changed by STI/CLI
     ///
-    fn change_flags(&mut self, reg: &str, v: u16) {
+    fn change_flags(&mut self, v: u16) {
         // Set flag according to change from old to new
         //CF, // Carry: 1=carry, 0=no-carry
         //ZF, // Zero: 1=zero, 0=non-zero
@@ -166,7 +166,7 @@ impl CpuContext {
         //PF, // Parity: 1=even, 0=odd
         //DF, // direction: 1=down, 0=up
 
-        if v & 0x1000 != 0 {
+        if v & 0x8000 != 0 {
             self.set_SF();
         } else {
             self.reset_SF();
@@ -220,19 +220,49 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cpu_flags() {
+    fn test_set_reset_flags() {
         let mut cpu: CpuContext = CpuContext::boot();
-        cpu.set_CF();
-        assert_eq!(CF_MASK, cpu.flags);
+        cpu.set_ZF();
+        assert_eq!(ZF_MASK, cpu.flags);
         cpu.set_PF();
-        assert_eq!(CF_MASK | PF_MASK, cpu.flags);
-        cpu.set_OF();
-        assert_eq!(CF_MASK | PF_MASK | OF_MASK, cpu.flags);
-        cpu.reset_CF();
-        assert_eq!(PF_MASK | OF_MASK, cpu.flags);
+        assert_eq!(ZF_MASK | PF_MASK, cpu.flags);
+        cpu.set_SF();
+        assert_eq!(ZF_MASK | PF_MASK | SF_MASK, cpu.flags);
+        cpu.reset_SF();
+        assert_eq!(ZF_MASK | PF_MASK, cpu.flags);
         cpu.reset_PF();
-        assert_eq!(OF_MASK, cpu.flags);
-        cpu.reset_OF();
+        assert_eq!(ZF_MASK, cpu.flags);
+        cpu.reset_ZF();
         assert_eq!(0, cpu.flags);
+    }
+
+    #[test]
+    fn test_zf() {
+        let mut cpu = CpuContext::boot();
+        cpu.flags = 0;
+        cpu.set_register("ax", 0).unwrap();
+        assert_eq!(ZF_MASK, cpu.flags & ZF_MASK);
+        cpu.set_register("ax", 1).unwrap();
+        assert_eq!(0, cpu.flags & ZF_MASK);
+    }
+
+    #[test]
+    fn test_sf() {
+        let mut cpu = CpuContext::boot();
+        cpu.flags = 0;
+        cpu.set_register("ax", 0xffff).unwrap();
+        assert_eq!(SF_MASK, cpu.flags & SF_MASK);
+        cpu.set_register("ax", 0x7777).unwrap();
+        assert_eq!(0, cpu.flags & SF_MASK);
+    }
+
+    #[test]
+    fn test_pf() {
+        let mut cpu = CpuContext::boot();
+        cpu.flags = 0;
+        cpu.set_register("ax", 0x2222).unwrap();
+        assert_eq!(PF_MASK, cpu.flags & PF_MASK);
+        cpu.set_register("ax", 0x777).unwrap();
+        assert_eq!(0, cpu.flags & PF_MASK);
     }
 }
