@@ -22,13 +22,18 @@ macro_rules! setter_and_resetter_flag {
         paste! {
             $(
                 #[allow(non_snake_case)]
-                fn [<set_ $flag>](&mut self) {
+                pub fn [<set_ $flag>](&mut self) {
                     self.flags |= [<$flag _MASK>];
                 }
 
                 #[allow(non_snake_case)]
-                fn [<reset_ $flag>](&mut self) {
+                pub fn [<reset_ $flag>](&mut self) {
                     self.flags &= ![<$flag _MASK>];
+                }
+
+                #[allow(non_snake_case)]
+                pub fn [<get_ $flag>](&mut self) -> u16 {
+                    self.flags & [<$flag _MASK>]
                 }
             )+
         }
@@ -39,8 +44,8 @@ macro_rules! setter_and_resetter_flag {
 reference: https://www.geeksforgeeks.org/flag-register-8086-microprocessor/
 */
 
-//const CF: u16 = 0; // Carry: 1=carry, 0=no-carry
-//const CF_MASK: u16 = 1 << CF;
+const CF: u16 = 0; // Carry: 1=carry, 0=no-carry
+const CF_MASK: u16 = 1 << CF;
 const PF: u16 = 2; // Parity: 1=even, 0=odd
 const PF_MASK: u16 = 1 << PF;
 // AC: NOT supported yet
@@ -55,8 +60,8 @@ const SF_MASK: u16 = 1 << SF;
 // DF: NOT supported yet
 //const DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
 //const DF_MASK: u16 = 1 << DF;
-//const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
-//const OF_MASK: u16 = 1 << OF;
+const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
+const OF_MASK: u16 = 1 << OF;
 
 #[derive(Default)]
 pub struct CpuContext {
@@ -106,7 +111,7 @@ impl CpuContext {
     // 3. [ss:sp] = ax
     setter_and_getter_reg!(ax, bx, cx, dx, si, di, cs, ip);
 
-    setter_and_resetter_flag!(PF, ZF, SF);
+    setter_and_resetter_flag!(PF, ZF, SF, OF, CF);
 
     pub fn get_register(&self, reg: &str) -> Result<u16, String> {
         let r = match reg {
@@ -158,14 +163,6 @@ impl CpuContext {
     /// IF is changed by STI/CLI
     ///
     fn change_flags(&mut self, v: u16) {
-        // Set flag according to change from old to new
-        //CF, // Carry: 1=carry, 0=no-carry
-        //ZF, // Zero: 1=zero, 0=non-zero
-        //SF, // Sign: 1=negative, 0=positive
-        //OF, // Overflow: 1=overflow, 0=not-overflow
-        //PF, // Parity: 1=even, 0=odd
-        //DF, // direction: 1=down, 0=up
-
         if v & 0x8000 != 0 {
             self.set_SF();
         } else {
@@ -223,15 +220,18 @@ mod tests {
     fn test_set_reset_flags() {
         let mut cpu: CpuContext = CpuContext::boot();
         cpu.set_ZF();
-        assert_eq!(ZF_MASK, cpu.flags);
+        assert_eq!(ZF_MASK, cpu.get_ZF());
         cpu.set_PF();
-        assert_eq!(ZF_MASK | PF_MASK, cpu.flags);
+        assert_eq!(ZF_MASK | PF_MASK, cpu.get_ZF() | cpu.get_PF());
         cpu.set_SF();
-        assert_eq!(ZF_MASK | PF_MASK | SF_MASK, cpu.flags);
+        assert_eq!(
+            ZF_MASK | PF_MASK | SF_MASK,
+            cpu.get_ZF() | cpu.get_PF() | cpu.get_SF()
+        );
         cpu.reset_SF();
-        assert_eq!(ZF_MASK | PF_MASK, cpu.flags);
+        assert_eq!(ZF_MASK | PF_MASK, cpu.get_ZF() | cpu.get_PF());
         cpu.reset_PF();
-        assert_eq!(ZF_MASK, cpu.flags);
+        assert_eq!(ZF_MASK, cpu.get_ZF());
         cpu.reset_ZF();
         assert_eq!(0, cpu.flags);
     }
@@ -241,9 +241,9 @@ mod tests {
         let mut cpu = CpuContext::boot();
         cpu.flags = 0;
         cpu.set_register("ax", 0).unwrap();
-        assert_eq!(ZF_MASK, cpu.flags & ZF_MASK);
+        assert_eq!(ZF_MASK, cpu.get_ZF());
         cpu.set_register("ax", 1).unwrap();
-        assert_eq!(0, cpu.flags & ZF_MASK);
+        assert_eq!(0, cpu.get_ZF());
     }
 
     #[test]
@@ -251,9 +251,9 @@ mod tests {
         let mut cpu = CpuContext::boot();
         cpu.flags = 0;
         cpu.set_register("ax", 0xffff).unwrap();
-        assert_eq!(SF_MASK, cpu.flags & SF_MASK);
+        assert_eq!(SF_MASK, cpu.get_SF());
         cpu.set_register("ax", 0x7777).unwrap();
-        assert_eq!(0, cpu.flags & SF_MASK);
+        assert_eq!(0, cpu.get_SF());
     }
 
     #[test]
@@ -261,8 +261,8 @@ mod tests {
         let mut cpu = CpuContext::boot();
         cpu.flags = 0;
         cpu.set_register("ax", 0x2222).unwrap();
-        assert_eq!(PF_MASK, cpu.flags & PF_MASK);
+        assert_eq!(PF_MASK, cpu.get_PF());
         cpu.set_register("ax", 0x777).unwrap();
-        assert_eq!(0, cpu.flags & PF_MASK);
+        assert_eq!(0, cpu.get_PF());
     }
 }
