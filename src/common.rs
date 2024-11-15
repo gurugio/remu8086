@@ -5,20 +5,20 @@ e.g. [<caller_ $mod>] => caller_mov
 
 #[macro_export]
 macro_rules! caller_one {
-    ($mod:ident, $cpu:ident, $pairs:ident) => {
+    ($mod:ident, $cpu:ident, $memory:ident, $pairs:ident) => {
         paste! {
             let mut inner_rule = $pairs.into_inner();
             let first_operand = inner_rule.next().unwrap();
-            $mod::[<handler_ $mod>](&mut $cpu, first_operand);
+            $mod::[<handler_ $mod>](&mut $cpu, &mut $memory, first_operand);
         }
     };
 }
 
 #[macro_export]
 macro_rules! define_handler_one {
-    ($mod:ident, $first:ident, $cpu:ident, $body:block) => {
+    ($mod:ident, $first:ident, $cpu:ident, $memory:ident, $body:block) => {
         paste! {
-            pub fn [<handler_ $mod>]($cpu: &mut CpuContext, $first: Pair<Rule>) {
+            pub fn [<handler_ $mod>]($cpu: &mut CpuContext, $memory: &mut Memory, $first: Pair<Rule>) {
                 $body
             }
         }
@@ -27,21 +27,21 @@ macro_rules! define_handler_one {
 
 #[macro_export]
 macro_rules! caller_two {
-    ($mod:ident, $cpu:ident, $pairs:ident) => {
+    ($mod:ident, $cpu:ident, $memory:ident, $pairs:ident) => {
         paste! {
             let mut inner_rule = $pairs.into_inner();
             let first_operand = inner_rule.next().unwrap();
             let second_operand = inner_rule.next().unwrap();
-            $mod::[<handler_ $mod>](&mut $cpu, first_operand, second_operand);
+            $mod::[<handler_ $mod>](&mut $cpu, &mut $memory, first_operand, second_operand);
         }
     };
 }
 
 #[macro_export]
 macro_rules! define_handler_two {
-    ($mod:ident, $first:ident, $second:ident, $cpu:ident, $body:block) => {
+    ($mod:ident, $first:ident, $second:ident, $cpu:ident, $memory:ident, $body:block) => {
         paste! {
-            pub fn [<handler_ $mod>]($cpu: &mut CpuContext, $first: Pair<Rule>, $second: Pair<Rule>) {
+            pub fn [<handler_ $mod>]($cpu: &mut CpuContext, $memory: &mut Memory, $first: Pair<Rule>, $second: Pair<Rule>) {
                 $body
             }
         }

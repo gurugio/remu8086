@@ -27,6 +27,21 @@ pub fn imm_to_num(s: &Pair<Rule>) -> Result<u16, String> {
     _imm_to_num(s.as_str())
 }
 
+pub fn mem_to_num(s: &Pair<Rule>) -> Result<usize, String> {
+    // [0x1234], word ptr [0x1234], byte ptr [0x1234] -> 0x1234
+    // get number between [ and ]
+    let s = s.as_str();
+    if let Some(start) = s.find('[') {
+        if let Some(end) = s.find(']') {
+            if start < end {
+                let r: u16 = _imm_to_num(&s[start + 1..end]).unwrap();
+                return Ok(r as usize);
+            }
+        }
+    }
+    Err("Failed to parse memory address: No valid number found between brackets".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -208,19 +223,23 @@ mod tests {
         assert_eq!(Rule::mem16, mem16.as_rule());
         assert_eq!("word ptr [0x1234]", mem16.as_str());
 
-        let instruction = AssemblyParser::parse(Rule::instruction, "mov al, byte ptr [0x12]")
+        assert_eq!(Ok(0x1234), mem_to_num(&mem16));
+
+        let instruction = AssemblyParser::parse(Rule::instruction, "mov al, byte ptr [12h]")
             .unwrap()
             .next()
             .unwrap();
         assert_eq!(Rule::mov, instruction.as_rule());
-        assert_eq!("mov al, byte ptr [0x12]", instruction.as_str());
+        assert_eq!("mov al, byte ptr [12h]", instruction.as_str());
         let mut inner = instruction.into_inner();
         let al = inner.next().unwrap();
         assert_eq!(Rule::reg8, al.as_rule());
         assert_eq!("al", al.as_str());
         let mem8 = inner.next().unwrap(); // second operands is imm
         assert_eq!(Rule::mem8, mem8.as_rule());
-        assert_eq!("byte ptr [0x12]", mem8.as_str());
+        assert_eq!("byte ptr [12h]", mem8.as_str());
+
+        assert_eq!(Ok(0x12), mem_to_num(&mem8));
     }
 
     #[test]

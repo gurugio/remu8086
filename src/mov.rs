@@ -1,4 +1,5 @@
-use crate::parser::{imm_to_num, Rule};
+use crate::memory::Memory;
+use crate::parser::{imm_to_num, mem_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_two};
 use paste::paste;
 use pest::iterators::Pair;
@@ -18,7 +19,7 @@ use pest::iterators::Pair;
 /// MOV sreg, r/m16 $8E, xx0 sreg xxx(ModR/M byte)
 */
 
-define_handler_two!(mov, first, second, cpu, {
+define_handler_two!(mov, first, second, cpu, memory, {
     match (first.as_rule(), second.as_rule()) {
         (Rule::reg16, Rule::reg16) => {
             cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
@@ -26,6 +27,16 @@ define_handler_two!(mov, first, second, cpu, {
         }
         (Rule::reg16, Rule::imm) => {
             let v = imm_to_num(&second).unwrap();
+            cpu.set_register(first.as_str(), v).unwrap();
+        }
+        (Rule::mem16, Rule::reg16) => {
+            let address = mem_to_num(&first).unwrap();
+            let v = cpu.get_register(second.as_str()).unwrap();
+            memory.write16(address, v);
+        }
+        (Rule::reg16, Rule::mem16) => {
+            let address = mem_to_num(&second).unwrap();
+            let v = memory.read16(address);
             cpu.set_register(first.as_str(), v).unwrap();
         }
         _ => println!("Not supported yet:{:?} {:?}", first, second),
