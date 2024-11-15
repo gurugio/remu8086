@@ -34,7 +34,7 @@ mod tests {
     use pest::Parser;
 
     #[test]
-    fn test_imm() {
+    fn test_parser_imm() {
         let hex = AssemblyParser::parse(Rule::imm, "0x1234")
             .unwrap()
             .next()
@@ -59,12 +59,12 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Decimal is not allowed")]
-    fn test_imm_failure() {
+    fn test_parser_imm_failure() {
         AssemblyParser::parse(Rule::imm, "1234").expect("Decimal is not allowed");
     }
 
     #[test]
-    fn test_register() {
+    fn test_parser_register() {
         let reg = AssemblyParser::parse(Rule::register, "ax")
             .unwrap()
             .next()
@@ -85,7 +85,7 @@ mod tests {
     }
 
     #[test]
-    fn test_operand() {
+    fn test_parser_operand() {
         let operand = AssemblyParser::parse(Rule::operand, "ax")
             .unwrap()
             .next()
@@ -112,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn test_instruction_imm() {
+    fn test_parser_instruction_imm() {
         let instruction = AssemblyParser::parse(Rule::instruction, "mov ax, 0x100")
             .unwrap()
             .next()
@@ -147,7 +147,7 @@ mod tests {
     }
 
     #[test]
-    fn test_instruction_reg() {
+    fn test_parser_instruction_reg() {
         let instruction = AssemblyParser::parse(Rule::instruction, "mov ax, bx")
             .unwrap()
             .next()
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mem() {
+    fn test_parser_mem() {
         let instruction = AssemblyParser::parse(Rule::instruction, "mov [0x1234], ax")
             .unwrap()
             .next()
@@ -187,9 +187,9 @@ mod tests {
         assert_eq!("mov [0x1234], ax", instruction.as_str());
 
         let mut inner = instruction.into_inner();
-        let memx = inner.next().unwrap();
-        assert_eq!(Rule::memx, memx.as_rule());
-        assert_eq!("[0x1234]", memx.as_str());
+        let mem16 = inner.next().unwrap();
+        assert_eq!(Rule::mem16, mem16.as_rule());
+        assert_eq!("[0x1234]", mem16.as_str());
 
         let ax = inner.next().unwrap(); // second operands is imm
         assert_eq!(Rule::reg16, ax.as_rule());
@@ -200,7 +200,13 @@ mod tests {
             .next()
             .unwrap();
         assert_eq!(Rule::mov, instruction.as_rule());
-        assert_eq!("mov ax, word ptr [0x1234]", instruction.as_str());
+        let mut inner = instruction.into_inner();
+        let ax = inner.next().unwrap();
+        assert_eq!(Rule::reg16, ax.as_rule());
+        assert_eq!("ax", ax.as_str());
+        let mem16 = inner.next().unwrap(); // second operands is imm
+        assert_eq!(Rule::mem16, mem16.as_rule());
+        assert_eq!("word ptr [0x1234]", mem16.as_str());
 
         let instruction = AssemblyParser::parse(Rule::instruction, "mov al, byte ptr [0x12]")
             .unwrap()
@@ -208,10 +214,17 @@ mod tests {
             .unwrap();
         assert_eq!(Rule::mov, instruction.as_rule());
         assert_eq!("mov al, byte ptr [0x12]", instruction.as_str());
+        let mut inner = instruction.into_inner();
+        let al = inner.next().unwrap();
+        assert_eq!(Rule::reg8, al.as_rule());
+        assert_eq!("al", al.as_str());
+        let mem8 = inner.next().unwrap(); // second operands is imm
+        assert_eq!(Rule::mem8, mem8.as_rule());
+        assert_eq!("byte ptr [0x12]", mem8.as_str());
     }
 
     #[test]
-    fn test_program() {
+    fn test_parser_program() {
         let program = "mov ax, bx\nadd cx, 0x1234\njmp 1\n1:";
         let file = AssemblyParser::parse(Rule::program, program)
             .expect("Failed to parse a file with Rule::program rule") // unwrap the parse result
@@ -227,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn test_imm_to_num() {
+    fn test_parser_imm_to_num() {
         assert_eq!(Ok(0x1a3), _imm_to_num("0x1a3"));
         assert_eq!(Ok(0x123), _imm_to_num("123h"));
         assert_eq!(Ok(0xabc), _imm_to_num("0abch"));
