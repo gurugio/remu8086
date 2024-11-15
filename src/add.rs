@@ -1,3 +1,4 @@
+use crate::memory::Memory;
 use crate::parser::{imm_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_two};
 use paste::paste;
@@ -15,7 +16,7 @@ use pest::iterators::Pair;
 /// ADD r/m16, imm8 $83 xx000xxx (ModR/M byte)
 */
 
-fn do_add(cpu: &mut CpuContext, reg: &str, l: u16, r: u16) {
+fn do_add(cpu: &mut CpuContext, memory: &mut Memory, reg: &str, l: u16, r: u16) {
     // work-around the overflow checker of Rust
     let l32: u32 = l as u32;
     let r32: u32 = r as u32 + l32;
@@ -45,19 +46,19 @@ fn do_add(cpu: &mut CpuContext, reg: &str, l: u16, r: u16) {
     cpu.set_register(reg, r_added).unwrap();
 }
 
-define_handler_two!(add, first, second, cpu, {
+define_handler_two!(add, first, second, cpu, memory, {
     match (first.as_rule(), second.as_rule()) {
         (Rule::reg16, Rule::reg16) => {
             cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
                 .unwrap();
             let l: u16 = cpu.get_register(first.as_str()).unwrap();
             let r: u16 = cpu.get_register(second.as_str()).unwrap();
-            do_add(cpu, first.as_str(), l, r);
+            do_add(cpu, memory, first.as_str(), l, r);
         }
         (Rule::reg16, Rule::imm) => {
             let r = imm_to_num(&second).unwrap();
             let l = cpu.get_register(first.as_str()).unwrap();
-            do_add(cpu, first.as_str(), l, r);
+            do_add(cpu, memory, first.as_str(), l, r);
         }
         _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
@@ -70,19 +71,20 @@ mod tests {
     #[test]
     fn test_add_overflow() {
         let mut cpu: CpuContext = CpuContext::boot();
+        let mut memory = Memory::boot();
 
         // Plus + Plus = Minus => Overflow error!
-        do_add(&mut cpu, "ax", u16::MAX / 2, u16::MAX / 2);
+        do_add(&mut cpu, &mut memory, "ax", u16::MAX / 2, u16::MAX / 2);
         assert_ne!(0, cpu.get_OF());
 
         // 0xffff + 1 = 0x10000 => 0x0 as u16.
         // There is no overflow because -1 + 1 = 0.
         // But there is a carry.
-        do_add(&mut cpu, "ax", u16::MAX, 1);
+        do_add(&mut cpu, &mut memory, "ax", u16::MAX, 1);
         assert_eq!(0, cpu.get_OF());
 
         // Plus + Plus = Minus => Overflow error!
-        do_add(&mut cpu, "ax", 0x7fff, 1);
+        do_add(&mut cpu, &mut memory, "ax", 0x7fff, 1);
         assert_ne!(0, cpu.get_OF());
     }
 }

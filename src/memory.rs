@@ -14,6 +14,10 @@ impl Memory {
         }
     }
 
+    //
+    // BUGBUG!! Add address range check and return error
+    //
+
     // 메모리에서 읽기
     pub fn read8(&self, address: usize) -> u8 {
         *self.last_address.borrow_mut() = address;
@@ -28,12 +32,37 @@ impl Memory {
     pub fn write8(&mut self, address: usize, value: u8) {
         *self.last_address.borrow_mut() = address;
         self.data[address] = value;
+        println!("{:?}", self);
     }
 
     pub fn write16(&mut self, address: usize, value: u16) {
         *self.last_address.borrow_mut() = address;
         self.data[address] = (value & 0xff) as u8;
         self.data[address + 1] = ((value & 0xff00) >> 8) as u8;
+        println!("{:?}", self);
+    }
+}
+
+// print memory values around the last accessed address
+impl fmt::Debug for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+
+        let start = *self.last_address.borrow() & 0xffff0;
+        let end = start + 0xf;
+
+        s.push_str(&format!("{:05X}", start));
+        s.push(' ');
+        for i in start..=end {
+            let d = self.read8(i);
+            let ss = format!("{:02X}", d);
+            s.push_str(&ss);
+            if i != end {
+                s.push(' ');
+            }
+        }
+
+        write!(f, "{}", s)
     }
 }
 
@@ -66,5 +95,13 @@ mod tests {
         memory.write16(0, 0xabcd);
         assert_eq!(0xcd, memory.read8(0));
         assert_eq!(0xab, memory.read8(1));
+    }
+
+    #[test]
+    fn test_memory_debug() {
+        let mut memory = Memory::boot();
+        memory.write16(0, 0xabcd);
+        let s = format!("{:?}", memory);
+        assert_eq!("00000 CD AB 00 00 00 00 00 00 00 00 00 00 00 00 00 00", s);
     }
 }
