@@ -39,6 +39,11 @@ define_handler_two!(mov, first, second, cpu, memory, {
             let v = memory.read16(address);
             cpu.set_register(first.as_str(), v).unwrap();
         }
+        (Rule::mem16, Rule::imm) => {
+            let address = mem_to_num(&first).unwrap();
+            let v = imm_to_num(&second).unwrap();
+            memory.write16(address, v);
+        }
         _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
 });
@@ -50,4 +55,6 @@ mod tests {
 
     #[test]
     fn test_mov_flags() {}
+
+    // TODO: make test cases for each case: reg-reg, reg-mem, mem-reg and etc...
 }

@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use crate::parser::{imm_to_num, Rule};
+use crate::parser::{imm_to_num, mem_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_two};
 use paste::paste;
 use pest::iterators::Pair;
@@ -60,6 +60,19 @@ define_handler_two!(add, first, second, cpu, memory, {
             let l = cpu.get_register(first.as_str()).unwrap();
             do_add(cpu, memory, first.as_str(), l, r);
         }
+        (Rule::mem16, Rule::reg16) => {
+            let address = mem_to_num(&first).unwrap();
+            let v1 = cpu.get_register(second.as_str()).unwrap();
+            let v2 = memory.read16(address);
+            memory.write16(address, v1 + v2);
+        }
+        (Rule::reg16, Rule::mem16) => {
+            let address = mem_to_num(&second).unwrap();
+            let v1 = memory.read16(address);
+            let v2 = cpu.get_register(first.as_str()).unwrap();
+            cpu.set_register(first.as_str(), v1 + v2).unwrap();
+        }
+
         _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
 });
@@ -86,5 +99,15 @@ mod tests {
         // Plus + Plus = Minus => Overflow error!
         do_add(&mut cpu, &mut memory, "ax", 0x7fff, 1);
         assert_ne!(0, cpu.get_OF());
+    }
+
+    #[test]
+    fn test_add_reg_reg() {
+        // TODO
+    }
+
+    #[test]
+    fn test_add_mem_reg() {
+        // TODO
     }
 }
