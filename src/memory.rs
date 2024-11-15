@@ -25,6 +25,7 @@ impl Memory {
     }
     pub fn read16(&self, address: usize) -> u16 {
         *self.last_address.borrow_mut() = address;
+        // Little-endian: read first address and the lower byte
         self.data[address] as u16 | (self.data[address + 1] as u16) << 8
     }
 
@@ -36,6 +37,7 @@ impl Memory {
     }
 
     pub fn write16(&mut self, address: usize, value: u16) {
+        // Little-endian: write lower byte first
         *self.last_address.borrow_mut() = address;
         self.data[address] = (value & 0xff) as u8;
         self.data[address + 1] = ((value & 0xff00) >> 8) as u8;
@@ -50,11 +52,11 @@ impl fmt::Debug for Memory {
 
         let start = *self.last_address.borrow() & 0xffff0;
         let end = start + 0xf;
-
         s.push_str(&format!("{:05X}", start));
         s.push(' ');
         for i in start..=end {
-            let d = self.read8(i);
+            // DO NOT USE read/write method because it changes last_address value
+            let d = self.data[i];
             let ss = format!("{:02X}", d);
             s.push_str(&ss);
             if i != end {
@@ -90,9 +92,11 @@ mod tests {
         assert_eq!(0, *memory.last_address.borrow());
         memory.write8(1, 0xAB);
         assert_eq!(1, *memory.last_address.borrow());
+        // Check the little-endian reading
         assert_eq!(0xABCD, memory.read16(0));
         assert_eq!(0, *memory.last_address.borrow());
         memory.write16(0, 0xabcd);
+        // Check the little-endian writing
         assert_eq!(0xcd, memory.read8(0));
         assert_eq!(0xab, memory.read8(1));
     }
