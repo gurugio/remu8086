@@ -5,7 +5,7 @@ e.g. [<caller_ $mod>] => caller_mov
 
 #[macro_export]
 macro_rules! caller_one {
-    ($mod:ident, $cpu:ident, $memory:ident, $pairs:ident) => {
+    ($mod:ident, $cpu:expr, $memory:expr, $pairs:ident) => {
         paste! {
             let mut inner_rule = $pairs.into_inner();
             let first_operand = inner_rule.next().unwrap();
@@ -27,7 +27,7 @@ macro_rules! define_handler_one {
 
 #[macro_export]
 macro_rules! caller_two {
-    ($mod:ident, $cpu:ident, $memory:ident, $pairs:ident) => {
+    ($mod:ident, $cpu:expr, $memory:expr, $pairs:ident) => {
         paste! {
             let mut inner_rule = $pairs.into_inner();
             let first_operand = inner_rule.next().unwrap();
