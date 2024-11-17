@@ -14,30 +14,19 @@ use actix_cors::Cors;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use serde_json::{json, Value};
 
-/*async fn handle_step(req_body: String) -> impl Responder {
-    let registers = json!({
-        "AX": "0000",
-        "BX": "0000"
-    });
-    let serialized = serde_json::to_string(&registers).unwrap();
-    HttpResponse::Ok().body(serialized)
-}*/
-
-struct AssemblyServer {
+struct Hardware8086 {
     cpu: cpucontext::CpuContext,
     memory: memory::Memory,
 }
 
-impl AssemblyServer {
+impl Hardware8086 {
     fn new() -> Self {
-        AssemblyServer {
+        Self {
             cpu: cpucontext::CpuContext::boot(),
             memory: memory::Memory::boot(),
         }
     }
-}
 
-impl AssemblyServer {
     fn handle_instruction(&mut self, line: &str) -> Result<(), String> {
         // TODO: parse one instruction and change status of CPU and memory
         println!("Handle instruction:{}", line);
@@ -66,9 +55,10 @@ impl AssemblyServer {
         Ok(())
     }
 
+    /// Return CPU context in Json format
+    /// "Reg": "value"
     fn get_cpu(&self) -> serde_json::Value {
-        // TODO: change CPU status into
-        println!("return: {:?}", self.cpu);
+        // TODO: find a better way to change CpuContext structure into Json data
         serde_json::json!({
             "AX": self.cpu.get_register("ax").unwrap().to_string(),
             "BX": self.cpu.get_register("bx").unwrap().to_string(),
@@ -80,27 +70,18 @@ impl AssemblyServer {
     // TODO: fn get_memory(&self) -> serde_json::Value {}
 }
 
-struct AssemblyServerLock {
-    server: Mutex<AssemblyServer>,
+struct HardwareLock {
+    hardware: Mutex<Hardware8086>,
 }
 
-async fn handle_step(req_body: String, data: web::Data<AssemblyServerLock>) -> impl Responder {
+async fn handle_step(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
     println!("/step: Receive data={}", req_body);
-
-    let mut server = data.server.lock().unwrap();
+    let mut server = data.hardware.lock().unwrap();
     server.handle_instruction(&req_body).unwrap();
-
-    /*HttpResponse::Ok().json({
-        // 예시로 간단한 JSON 응답을 반환합니다.
-        serde_json::json!({
-            "AX": "0000",
-            "BX": "0000"
-        })
-    })*/
     HttpResponse::Ok().json(server.get_cpu())
 }
 
-async fn handle_reload(req_body: String, _data: web::Data<AssemblyServerLock>) -> impl Responder {
+async fn handle_reload(req_body: String, _data: web::Data<HardwareLock>) -> impl Responder {
     println!("/reload: Receive data={}", req_body);
 
     // TODO: clear status of CPU and memory
@@ -118,8 +99,8 @@ async fn handle_reload(req_body: String, _data: web::Data<AssemblyServerLock>) -
 async fn main() -> std::io::Result<()> {
     println!("Rust web-server started at 127.0.0.1:8080");
 
-    let myserverdata = web::Data::new(AssemblyServerLock {
-        server: Mutex::new(AssemblyServer::new()),
+    let myserverdata = web::Data::new(HardwareLock {
+        hardware: Mutex::new(Hardware8086::new()),
     });
 
     HttpServer::new(move || {
