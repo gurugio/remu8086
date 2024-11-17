@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8086 Emulator</title>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .left-panel {
+            width: 40%;
+            border-right: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .right-panel {
+            width: 60%;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .registers,
+        .memory {
+            flex: 1;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        .registers {
+            margin-bottom: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: calc(100% - 50px);
+            box-sizing: border-box;
+        }
+
+        .button-container {
+            margin-bottom: 10px;
+        }
+
+        button {
+            margin-right: 5px;
+        }
+
+        .highlight {
+            background-color: #ffff99;
+            /* Light yellow highlight */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="left-panel">
+        <div class="button-container">
+            <button id="reloadButton">Reload</button>
+            <button id="stepButton">Step</button>
+            <button>Run</button>
+        </div>
+        <textarea id="codeInput" placeholder="Enter your code here..."></textarea>
+    </div>
+    <div class="right-panel">
+        <div class="registers" id="registers">
+            <h3>8086 Registers</h3>
+            <pre id="registersOutput">No data yet</pre>
+        </div>
+        <div class="memory">
+            <h3>Memory</h3>
+            <!-- Content for memory goes here -->
+        </div>
+    </div>
+
+    <script>
+        let currentLine = 0;
+
+        document.getElementById('stepButton').addEventListener('click', () => {
+            const codeInput = document.getElementById('codeInput');
+            const lines = codeInput.value.split('\n');
+
+            if (currentLine < lines.length) {
+                const lineToSend = lines[currentLine].trim();
+                if (lineToSend) {
+                    fetch('http://127.0.0.1:8080/step', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code: lineToSend })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            displayRegisters(data);
+                        })
+                        .catch(error => {
+                            console.error('Network error:', error);
+                        });
+
+                    highlightLine(codeInput, currentLine);
+                    currentLine++;
+                }
+            } else {
+                console.log('No more lines to send.');
+            }
+        });
+
+        document.getElementById('reloadButton').addEventListener('click', () => {
+            const codeInput = document.getElementById('codeInput');
+            currentLine = 0;
+            highlightLine(codeInput, currentLine);
+
+            fetch('http://127.0.0.1:8080/reload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: "" })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    displayRegisters(data);
+                })
+                .catch(error => {
+                    console.error('Network error:', error);
+                });
+        });
+
+        function displayRegisters(data) {
+            const registersOutput = document.getElementById('registersOutput');
+            registersOutput.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function highlightLine(textarea, line) {
+            const lines = textarea.value.split('\n');
+            const start = lines.slice(0, line).join('\n').length + (line > 0 ? 1 : 0);
+            const end = start + lines[line].length;
+
+            textarea.setSelectionRange(start, end);
+            textarea.focus();
+        }
+    </script>
+</body>
+
+</html>
