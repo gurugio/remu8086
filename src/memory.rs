@@ -2,14 +2,17 @@ use std::cell::RefCell;
 use std::fmt;
 
 pub struct Memory {
-    data: [u8; 1024 * 1024], // 1MB 크기의 배열
+    data: Box<[u8; 1024 * 1024]>, // 1MB 크기의 배열
     last_address: RefCell<usize>,
 }
 
 impl Memory {
     pub fn boot() -> Self {
+        // Memory MUST be allocated with Box.
+        // Memory structure is an 1MB size array.
+        // It generates stack-overflow if it is allocated on the stack.
         Memory {
-            data: [0; 1024 * 1024], // 배열을 0으로 초기화
+            data: Box::new([0; 1024*1024]), // 배열을 0으로 초기화
             last_address: RefCell::new(0),
         }
     }
@@ -45,7 +48,7 @@ impl Memory {
     }
 }
 
-// print memory values around the last accessed address
+// println! memory values around the last accessed address
 impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();

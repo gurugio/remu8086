@@ -11,8 +11,8 @@ use pest::Parser;
 use std::sync::Mutex;
 
 use actix_cors::Cors;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
-use serde_json::{json, Value};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use serde_json::Value;
 
 struct Hardware8086 {
     cpu: cpucontext::CpuContext,
@@ -134,8 +134,8 @@ mod tests {
         // just an example to run the assembler with a local assembly source fle.
         // I made this to test the entire program on the terminal without web-things.
         //
-        let mut cpu: cpucontext::CpuContext = cpucontext::CpuContext::boot();
-        let mut memory: memory::Memory = memory::Memory::boot();
+        let mut cpu = cpucontext::CpuContext::boot();
+        let mut memory = memory::Memory::boot();
 
         let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
         let file = parser::AssemblyParser::parse(parser::Rule::program, &unparsed_file)

@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_set_reset_flags() {
-        let mut cpu: CpuContext = CpuContext::boot();
+        let mut cpu = CpuContext::boot();
         cpu.set_ZF();
         assert_eq!(ZF_MASK, cpu.get_ZF());
         cpu.set_PF();
