@@ -55,15 +55,31 @@ impl Hardware8086 {
         Ok(())
     }
 
+    fn reboot(&mut self) {
+        self.cpu.reboot();
+        self.memory.reboot();
+    }
+
     /// Return CPU context in Json format
     /// "Reg": "value"
-    fn get_cpu(&self) -> serde_json::Value {
-        // TODO: find a better way to change CpuContext structure into Json data
+    fn get_hardware(&self) -> serde_json::Value {
+        let m = format!("{}", self.memory);
         serde_json::json!({
             "AX": self.cpu.get_register("ax").unwrap().to_string(),
             "BX": self.cpu.get_register("bx").unwrap().to_string(),
             "CX": self.cpu.get_register("cx").unwrap().to_string(),
             "DX": self.cpu.get_register("dx").unwrap().to_string(),
+            "SI": self.cpu.get_register("si").unwrap().to_string(),
+            "DI": self.cpu.get_register("di").unwrap().to_string(),
+            "BP": self.cpu.get_register("bp").unwrap().to_string(),
+            "SP": self.cpu.get_register("sp").unwrap().to_string(),
+            "CS": self.cpu.get_register("cs").unwrap().to_string(),
+            "DS": self.cpu.get_register("ds").unwrap().to_string(),
+            "ES": self.cpu.get_register("es").unwrap().to_string(),
+            "SS": self.cpu.get_register("ss").unwrap().to_string(),
+            "IP": self.cpu.get_register("ip").unwrap().to_string(),
+            "FLAGS": self.cpu.get_register("flags").unwrap().to_string(),
+            "memory": m,
         })
     }
 
@@ -78,21 +94,14 @@ async fn handle_step(req_body: String, data: web::Data<HardwareLock>) -> impl Re
     println!("/step: Receive data={}", req_body);
     let mut server = data.hardware.lock().unwrap();
     server.handle_instruction(&req_body).unwrap();
-    HttpResponse::Ok().json(server.get_cpu())
+    HttpResponse::Ok().json(server.get_hardware())
 }
 
-async fn handle_reload(req_body: String, _data: web::Data<HardwareLock>) -> impl Responder {
+async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
     println!("/reload: Receive data={}", req_body);
-
-    // TODO: clear status of CPU and memory
-
-    HttpResponse::Ok().json({
-        // 예시로 간단한 JSON 응답을 반환합니다.
-        serde_json::json!({
-            "AX": "0000",
-            "BX": "0000"
-        })
-    })
+    let mut server = data.hardware.lock().unwrap();
+    server.reboot();
+    HttpResponse::Ok().json(server.get_hardware())
 }
 
 #[actix_web::main]

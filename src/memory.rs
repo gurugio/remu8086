@@ -12,9 +12,18 @@ impl Memory {
         // Memory structure is an 1MB size array.
         // It generates stack-overflow if it is allocated on the stack.
         Memory {
-            data: Box::new([0; 1024*1024]), // 배열을 0으로 초기화
+            data: Box::new([0; 1024 * 1024]), // 배열을 0으로 초기화
             last_address: RefCell::new(0),
         }
+    }
+
+    pub fn reboot(&mut self) {
+        self.data.fill(0);
+        *self.last_address.borrow_mut() = 0;
+    }
+
+    pub fn get(&self) -> Box<[u8; 1024 * 1024]> {
+        self.data.clone()
     }
 
     //
@@ -48,7 +57,7 @@ impl Memory {
     }
 }
 
-// println! memory values around the last accessed address
+// Print memory values around the last accessed address for debugging
 impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
@@ -65,6 +74,28 @@ impl fmt::Debug for Memory {
             if i != end {
                 s.push(' ');
             }
+        }
+
+        write!(f, "{}", s)
+    }
+}
+
+impl fmt::Display for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for row in (0..0x100000).step_by(16) {
+            s.push_str(&format!("{:05X}", row));
+            s.push(' ');
+            for offset in 0..16 {
+                // DO NOT USE read/write method because it changes last_address value
+                let d = self.data[row + offset];
+                let ss = format!("{:02X}", d);
+                s.push_str(&ss);
+                if offset != 15 {
+                    s.push(' ');
+                }
+            }
+            s.push('\n');
         }
 
         write!(f, "{}", s)
@@ -107,8 +138,8 @@ mod tests {
     #[test]
     fn test_memory_debug() {
         let mut memory = Memory::boot();
-        memory.write16(0, 0xabcd);
+        memory.write16(0x100, 0xabcd);
         let s = format!("{:?}", memory);
-        assert_eq!("00000 CD AB 00 00 00 00 00 00 00 00 00 00 00 00 00 00", s);
+        assert_eq!("00100 CD AB 00 00 00 00 00 00 00 00 00 00 00 00 00 00", s);
     }
 }
