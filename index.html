@@ -34,6 +34,7 @@
             padding: 10px;
             border: 1px solid #ccc;
             box-sizing: border-box;
+            overflow: auto;
         }
 
         .registers {
@@ -52,11 +53,6 @@
 
         button {
             margin-right: 5px;
-        }
-
-        .highlight {
-            background-color: #ffff99;
-            /* Light yellow highlight */
         }
     </style>
 </head>
@@ -77,7 +73,7 @@
         </div>
         <div class="memory">
             <h3>Memory</h3>
-            <!-- Content for memory goes here -->
+            <pre id="memoryOutput">No data yet</pre>
         </div>
     </div>
 
@@ -101,6 +97,7 @@
                         .then(response => response.json())
                         .then(data => {
                             displayRegisters(data);
+                            displayMemory(data);
                         })
                         .catch(error => {
                             console.error('Network error:', error);
@@ -129,6 +126,7 @@
                 .then(response => response.json())
                 .then(data => {
                     displayRegisters(data);
+                    displayMemory(data);
                 })
                 .catch(error => {
                     console.error('Network error:', error);
@@ -137,7 +135,27 @@
 
         function displayRegisters(data) {
             const registersOutput = document.getElementById('registersOutput');
-            registersOutput.textContent = JSON.stringify(data, null, 2);
+            registersOutput.textContent = `
+AX: ${parseInt(data.AX, 10).toString(16).toUpperCase().padStart(4, '0')}
+BX: ${parseInt(data.BX, 10).toString(16).toUpperCase().padStart(4, '0')}
+CX: ${parseInt(data.CX, 10).toString(16).toUpperCase().padStart(4, '0')}
+DX: ${parseInt(data.DX, 10).toString(16).toUpperCase().padStart(4, '0')}
+SI: ${parseInt(data.SI, 10).toString(16).toUpperCase().padStart(4, '0')}
+DI: ${parseInt(data.DI, 10).toString(16).toUpperCase().padStart(4, '0')}
+BP: ${parseInt(data.BP, 10).toString(16).toUpperCase().padStart(4, '0')}
+SP: ${parseInt(data.SP, 10).toString(16).toUpperCase().padStart(4, '0')}
+CS: ${parseInt(data.CS, 10).toString(16).toUpperCase().padStart(4, '0')}
+DS: ${parseInt(data.DS, 10).toString(16).toUpperCase().padStart(4, '0')}
+ES: ${parseInt(data.ES, 10).toString(16).toUpperCase().padStart(4, '0')}
+SS: ${parseInt(data.SS, 10).toString(16).toUpperCase().padStart(4, '0')}
+IP: ${parseInt(data.IP, 10).toString(16).toUpperCase().padStart(4, '0')}
+FLAGS: ${parseInt(data.FLAGS, 10).toString(16).toUpperCase().padStart(4, '0')}
+            `;
+        }
+
+        function displayMemory(data) {
+            const memoryOutput = document.getElementById('memoryOutput');
+            memoryOutput.textContent = data.memory || "No memory data";
         }
 
         function highlightLine(textarea, line) {

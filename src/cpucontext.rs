@@ -96,6 +96,24 @@ impl CpuContext {
             ..Default::default()
         }
     }
+
+    pub fn reboot(&mut self) {
+        self.ax = 0;
+        self.bx = 0;
+        self.cx = 0;
+        self.dx = 0;
+        self.si = 0;
+        self.di = 0;
+        self.bp = 0;
+        self.sp = 0;
+        self.cs = 0;
+        self.ds = 0;
+        self.es = 0;
+        self.ss = 0;
+        self.ip = 0;
+        self.flags = 0;
+    }
+
     // TODO: set_* functions to set each register16 and register8
     // set_ax, set_al, set_ah, get_ax, get_al, get_ah
     // set_bx, ...
@@ -109,7 +127,7 @@ impl CpuContext {
     // ....0xe:0xfffe
     // ....when sp gets underflow, ss is decreased.
     // 3. [ss:sp] = ax
-    setter_and_getter_reg!(ax, bx, cx, dx, si, di, cs, ip);
+    setter_and_getter_reg!(ax, bx, cx, dx, si, di, bp, sp, cs, ds, es, ss, ip, flags);
 
     setter_and_resetter_flag!(PF, ZF, SF, OF, CF);
 
@@ -121,8 +139,14 @@ impl CpuContext {
             "dx" => self.get_dx(),
             "si" => self.get_si(),
             "di" => self.get_di(),
+            "bp" => self.get_bp(),
+            "sp" => self.get_sp(),
             "cs" => self.get_cs(),
+            "ds" => self.get_ds(),
+            "es" => self.get_es(),
+            "ss" => self.get_ss(),
             "ip" => self.get_ip(),
+            "flags" => self.get_flags(),
             _ => return Err("Wrong register specified for get_register".to_string()),
         };
         Ok(r)
@@ -148,8 +172,14 @@ impl CpuContext {
             "dx" => self.set_dx(v),
             "si" => self.set_si(v),
             "di" => self.set_di(v),
+            "bp" => self.set_bp(v),
+            "sp" => self.set_sp(v),
             "cs" => self.set_cs(v),
+            "ds" => self.set_ds(v),
+            "es" => self.set_es(v),
+            "ss" => self.set_ss(v),
             "ip" => self.set_ip(v),
+            "flags" => self.set_flags(v),
             _ => return Err("Wrong register specified for set_register".to_string()),
         };
         Ok(())
