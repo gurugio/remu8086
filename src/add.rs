@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_add_overflow() {
-        let mut cpu: CpuContext = CpuContext::boot();
+        let mut cpu = CpuContext::boot();
         let mut memory = Memory::boot();
 
         // Plus + Plus = Minus => Overflow error!

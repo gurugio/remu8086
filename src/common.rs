@@ -75,7 +75,6 @@ mod tests {
         let r = vec![0, 1, 1, 2, 1, 2, 2, 3, 1, 1, 2, 1, 2, 2, 3, 16];
 
         for i in 0..v.len() {
-            println!("v={}", v[i]);
             assert_eq!(r[i], count_bit(v[i]));
         }
     }
