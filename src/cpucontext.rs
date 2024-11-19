@@ -160,11 +160,6 @@ impl CpuContext {
     }
 
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
-        // Flags is changed according to both of the old value of the target register and the new value.
-        if self.is_general_reg(reg) {
-            self.change_flags(v);
-        }
-
         match reg {
             "ax" => self.set_ax(v),
             "bx" => self.set_bx(v),
@@ -183,33 +178,6 @@ impl CpuContext {
             _ => return Err("Wrong register specified for set_register".to_string()),
         };
         Ok(())
-    }
-
-    /// Change some flags changed by all instruction
-    ///
-    /// This function is called in set_register function. So this function changes
-    /// the flags that can be changed by all instruction.
-    /// CF and OF are changed by each instruction handlers: mov, add, sub, stc, clc, cmc and so on.
-    /// IF is changed by STI/CLI
-    ///
-    fn change_flags(&mut self, v: u16) {
-        if v & 0x8000 != 0 {
-            self.set_SF();
-        } else {
-            self.reset_SF();
-        }
-
-        if count_bit(v) & 0x1 == 0 {
-            self.set_PF();
-        } else {
-            self.reset_PF();
-        }
-
-        if v == 0 {
-            self.set_ZF();
-        } else {
-            self.reset_ZF();
-        }
     }
 }
 
