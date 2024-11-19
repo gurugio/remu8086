@@ -28,12 +28,12 @@ impl Hardware8086 {
     }
 
     fn handle_instruction(&mut self, line: &str) -> Result<(), String> {
-        // TODO: parse one instruction and change status of CPU and memory
         println!("Handle instruction:{}", line);
-        let v: Value = serde_json::from_str(line).unwrap();
-        let v = v["code"].as_str().unwrap();
-
-        let instruction = parser::AssemblyParser::parse(parser::Rule::instruction, v)
+        // The line is not an instruction as like "mov ax, bx"
+        // but also COMMENT, NEWLINE or WHITESPACE.
+        // Therefore it uses Rule::program, not Rule::instruction when parsing the line
+        // because Rule::instruction cannot handle COMMENT, NEWLINE and WHITESPACE.
+        let instruction = parser::AssemblyParser::parse(parser::Rule::program, line)
             .unwrap()
             .next()
             .unwrap();
@@ -92,16 +92,18 @@ struct HardwareLock {
 
 async fn handle_step(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
     println!("/step: Receive data={}", req_body);
-    let mut server = data.hardware.lock().unwrap();
-    server.handle_instruction(&req_body).unwrap();
-    HttpResponse::Ok().json(server.get_hardware())
+    let mut hardware = data.hardware.lock().unwrap();
+    let v: Value = serde_json::from_str(&req_body).unwrap();
+    let inst = v["code"].as_str().unwrap();
+    hardware.handle_instruction(inst).unwrap();
+    HttpResponse::Ok().json(hardware.get_hardware())
 }
 
 async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
     println!("/reload: Receive data={}", req_body);
-    let mut server = data.hardware.lock().unwrap();
-    server.reboot();
-    HttpResponse::Ok().json(server.get_hardware())
+    let mut hardware = data.hardware.lock().unwrap();
+    hardware.reboot();
+    HttpResponse::Ok().json(hardware.get_hardware())
 }
 
 #[actix_web::main]
@@ -134,38 +136,20 @@ async fn main() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::fs::read_to_string;
 
     #[test]
-    fn test_main_rune_example_file() {
+    fn test_main_run_example_file() {
         //
         // Actually this is not a readl test but
         // just an example to run the assembler with a local assembly source fle.
         // I made this to test the entire program on the terminal without web-things.
         //
-        let mut cpu = cpucontext::CpuContext::boot();
-        let mut memory = memory::Memory::boot();
-
-        let unparsed_file = fs::read_to_string("example.as").expect("cannot read file");
-        let file = parser::AssemblyParser::parse(parser::Rule::program, &unparsed_file)
-            .expect("Failed to parse a file with Rule::program rule") // unwrap the parse result
-            .next()
-            .unwrap(); // get and unwrap the `file` rule; never fails
-        for line in file.into_inner() {
-            println!("Execute:{}", line.as_str());
-            match line.as_rule() {
-                parser::Rule::mov => {
-                    caller_two!(mov, cpu, memory, line);
-                }
-                parser::Rule::org => {
-                    caller_one!(org, cpu, memory, line);
-                }
-                parser::Rule::add => {
-                    caller_two!(add, cpu, memory, line);
-                }
-                _ => println!("NOT implemented yet:{}", line),
-            }
-            println!("{:?}", cpu);
-        }
+        let mut hardware = Hardware8086::new();
+        let _ = read_to_string("example.as")
+            .unwrap()
+            .lines()
+            .map(|l| hardware.handle_instruction(l).unwrap())
+            .collect::<()>();
     }
 }
