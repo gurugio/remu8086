@@ -1,6 +1,7 @@
 mod add;
 mod common;
 mod cpucontext;
+mod inc;
 mod memory;
 mod mov;
 mod org;
@@ -47,6 +48,9 @@ impl Hardware8086 {
             }
             parser::Rule::add => {
                 caller_two!(add, self.cpu, self.memory, instruction);
+            }
+            parser::Rule::inc => {
+                caller_one!(inc, self.cpu, self.memory, instruction);
             }
             _ => println!("NOT implemented yet:{}", line),
         }
