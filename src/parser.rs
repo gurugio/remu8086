@@ -267,4 +267,13 @@ mod tests {
 
         assert_eq!(Err("Invalid hex number".to_owned()), _imm_to_num("0xghi"));
     }
+
+    #[test]
+    fn test_parser_indirect_addressing() {
+        // todo: add test for indirect addressing mode
+        // inc [bx + si]
+        // inc [bp + di]
+        // inc [si]
+        // ind [di]
+    }
 }
