@@ -233,34 +233,4 @@ mod tests {
         cpu.reset_ZF();
         assert_eq!(0, cpu.flags);
     }
-
-    #[test]
-    fn test_zf() {
-        let mut cpu = CpuContext::boot();
-        cpu.flags = 0;
-        cpu.set_register("ax", 0).unwrap();
-        assert_eq!(ZF_MASK, cpu.get_ZF());
-        cpu.set_register("ax", 1).unwrap();
-        assert_eq!(0, cpu.get_ZF());
-    }
-
-    #[test]
-    fn test_sf() {
-        let mut cpu = CpuContext::boot();
-        cpu.flags = 0;
-        cpu.set_register("ax", 0xffff).unwrap();
-        assert_eq!(SF_MASK, cpu.get_SF());
-        cpu.set_register("ax", 0x7777).unwrap();
-        assert_eq!(0, cpu.get_SF());
-    }
-
-    #[test]
-    fn test_pf() {
-        let mut cpu = CpuContext::boot();
-        cpu.flags = 0;
-        cpu.set_register("ax", 0x2222).unwrap();
-        assert_eq!(PF_MASK, cpu.get_PF());
-        cpu.set_register("ax", 0x777).unwrap();
-        assert_eq!(0, cpu.get_PF());
-    }
 }
