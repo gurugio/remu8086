@@ -55,11 +55,10 @@ const ZF: u16 = 6; // Zero: 1=zero, 0=non-zero
 const ZF_MASK: u16 = 1 << ZF;
 const SF: u16 = 7; // Sign: 1=negative, 0=positive
 const SF_MASK: u16 = 1 << SF;
-//const IF: u16 = 9;
-//const IF_MASK: u16 = 1 << IF;
-// DF: NOT supported yet
-//const DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
-//const DF_MASK: u16 = 1 << DF;
+const IF: u16 = 9;
+const IF_MASK: u16 = 1 << IF;
+const DF: u16 = 10; // direction: 1=down, 0=up (opcode: STD, CLD)
+const DF_MASK: u16 = 1 << DF;
 const OF: u16 = 11; // Overflow: 1=overflow, 0=not-overflow
 const OF_MASK: u16 = 1 << OF;
 
@@ -179,6 +178,35 @@ impl CpuContext {
         };
         Ok(())
     }
+
+    fn describe_flags(&self) -> String {
+        let mut r = String::new();
+        if self.flags & CF_MASK != 0 {
+            r.push_str("CF");
+        }
+        if self.flags & PF_MASK != 0 {
+            r.push_str(" PF");
+        }
+        if self.flags & ZF_MASK != 0 {
+            r.push_str(" ZF");
+        }
+        if self.flags & SF_MASK != 0 {
+            r.push_str(" SF");
+        }
+        if self.flags & IF_MASK != 0 {
+            r.push_str(" IF");
+        }
+        if self.flags & DF_MASK != 0 {
+            r.push_str(" DF");
+        }
+        if self.flags & OF_MASK != 0 {
+            r.push_str(" OF");
+        }
+        if r.len() == 0 {
+            r.push_str("no flag yet");
+        }
+        r
+    }
 }
 
 impl fmt::Debug for CpuContext {
@@ -189,7 +217,7 @@ impl fmt::Debug for CpuContext {
              \t_ax: 0x{:04X}, bx: 0x{:04X}, cx: 0x{:04X}, dx: 0x{:04X},\n\
              \t_si: 0x{:04X}, di: 0x{:04X}, bp: 0x{:04X}, sp: 0x{:04X},\n\
              \tcs: 0x{:04X}, ds: 0x{:04X}, es: 0x{:04X}, ss: 0x{:04X},\n\
-             \tip: 0x{:04X}, flags: 0x{:04X}\n\
+             \tip: 0x{:04X}, flags: 0x{:04X} ({})\n\
              }}",
             self.ax,
             self.bx,
@@ -204,7 +232,8 @@ impl fmt::Debug for CpuContext {
             self.es,
             self.ss,
             self.ip,
-            self.flags
+            self.flags,
+            self.describe_flags(),
         )
     }
 }
