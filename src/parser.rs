@@ -246,7 +246,7 @@ mod tests {
     fn test_parser_program() {
         let program = "mov ax, bx\nadd cx, 0x1234\njmp 1\n1:";
         let file = AssemblyParser::parse(Rule::program, program)
-            .expect("Failed to parse a file with Rule::program rule") // unwrap the parse result
+            .expect("Failed to parse multiline-instructions with Rule::program rule") // unwrap the parse result
             .next()
             .unwrap(); // get and unwrap the `file` rule; never fails
         let mut lines = file.into_inner();
@@ -270,10 +270,56 @@ mod tests {
 
     #[test]
     fn test_parser_indirect_addressing() {
-        // todo: add test for indirect addressing mode
-        // inc [bx + si]
-        // inc [bp + di]
-        // inc [si]
-        // ind [di]
+        // Eight indirect address operands
+        // [bx + si]
+        // [bx + di]
+        // [bp + si]
+        // [bp + di]
+        // [si]
+        // [di]
+        // [bp]
+        // [bx]
+
+        let operand = "[bx + si]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[bx + si]", parsed.as_str());
+
+        let mut inner = parsed.into_inner();
+        let bx = inner.next().unwrap();
+        assert_eq!(Rule::base, bx.as_rule());
+        assert_eq!("bx", bx.as_str());
+        let si = inner.next().unwrap(); // second operands is imm
+        assert_eq!(Rule::index, si.as_rule());
+        assert_eq!("si", si.as_str());
+
+        let operand = "[bp]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[bp]", parsed.as_str());
+
+        let mut inner = parsed.into_inner();
+        let bp = inner.next().unwrap();
+        assert_eq!(Rule::base, bp.as_rule());
+        assert_eq!("bp", bp.as_str());
+
+        let operand = "[di]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[di]", parsed.as_str());
+
+        let mut inner = parsed.into_inner();
+        let di = inner.next().unwrap();
+        assert_eq!(Rule::index, di.as_rule());
+        assert_eq!("di", di.as_str());
     }
 }
