@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use crate::parser::{imm_to_num, Rule};
+use crate::parser::Rule;
 use crate::{cpucontext::CpuContext, define_handler_one};
 use paste::paste;
 use pest::iterators::Pair;
@@ -59,9 +59,33 @@ r/m field | Base register | Index Register
 
 */
 
-//fn assemble_inc()
+fn register_table(reg: &str) -> Result<u8, String> {
+    match reg {
+        "ax" | "al" => Ok(0),
+        "cx" | "cl" => Ok(1),
+        "dx" | "dl" => Ok(2),
+        "bx" | "bl" => Ok(3),
+        "sp" | "ah" => Ok(4),
+        "bp" | "ch" => Ok(5),
+        "si" | "dh" => Ok(6),
+        "di" | "bh" => Ok(7),
+        _ => Err(format!("{} is not in the register_table", reg)),
+    }
+}
+
+fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
+    let mut v: Vec<u8> = Vec::new();
+    if operand.as_rule() == Rule::reg16 {
+        let byte = register_table(operand.as_str()).unwrap();
+        // opcode 0100_0000
+        v.push(byte | 0x40);
+    }
+    v
+}
 
 define_handler_one!(inc, first, cpu, memory, {
+    let code = assemble_inc(&first);
+    println!("inc {:?}", code);
     match first.as_rule() {
         Rule::reg16 => {
             let v = cpu.get_register(first.as_str()).unwrap();
@@ -70,3 +94,24 @@ define_handler_one!(inc, first, cpu, memory, {
         _ => println!("Not supported operand for org:{:?}", first),
     }
 });
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::AssemblyParser;
+
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
+    use super::*;
+    use pest::Parser;
+
+    #[test]
+    fn test_inc_onebyte_form() {
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc di")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        let v = assemble_inc(&operand);
+        assert_eq!(0x47, v[0]);
+    }
+}
