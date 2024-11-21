@@ -35,7 +35,7 @@ mem8 = { "byte ptr" ~ memx }
 mem16 = { "word ptr" ~ memx | memx }
 memx = @{ "[" ~ imm ~ "]" }
 
-indirect = { "[" ~ base* ~ index* ~ "]" }
+indirect = { "[" ~ base ~ "+" ~ index ~ "]" | "[" ~ base ~ "]" | "[" ~ index ~ "]" }
 base = { "bx" | "bp" }
 index = { "si" | "di" }
 
