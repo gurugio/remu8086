@@ -5,15 +5,17 @@ use paste::paste;
 use pest::iterators::Pair;
 
 /*
-inc
+INC instruction has 5 forms of code
+
 1. 1-byte form: inc 16-bit registers
+e.g. INC DI => 47
 Opcode bit 7-3: 01000
 bit 2-0: register table
 
 2. 2-byte form: inc 8-bit registers or addressing with only base/index register
-e.g. inc byte ptr [bx] FE 07
-e.g. inc word ptr [bx] FF 07
-e.g. INC WORD PTR [SI] FF 06
+e.g. inc byte ptr [bx] => FE 07
+e.g. inc word ptr [bx] => FF 07
+e.g. INC WORD PTR [SI] => FF 06
 e.g. inc dl FE C2
 1-byte Opcode bit 7-1: opcode 1111111
 1-byte W-bit 0: 0-operand is 8-bit, 1-operand is 16-bit
@@ -26,8 +28,8 @@ e.g. inc dl FE C2
   * register table when mod=11
 
 3. 3-byte form: inc memory location with 8-bit address (e.g. INC BYTE PTR [BX+10h])
-e.g. INC BYTE PTR [BX+10h] FE 47 10
-e.g. INC WORD PTR [BX+SI+10h] FF 84 10
+e.g. INC BYTE PTR [BX+10h] => FE 47 10
+e.g. INC WORD PTR [BX+SI+10h] => FF 84 10
 1-byte Opcode bit 7-1: 1111111
 1-byte W bit 0: 0-8bit, 1-16bit
 2-byte mod-bit 7-6: 01-use base register and 8-bit displacement of next one byte of instruction
@@ -36,28 +38,34 @@ e.g. INC WORD PTR [BX+SI+10h] FF 84 10
 3-byte Displacement 7-0
 
 4. 4-byte form: inc memory location with 16-bit address
-e.g. INC WORD PTR [BX+SI+1234h] FF 84 34 12 (ChatGPT shows this code, so it might be wrong)
-e.g. INC BYTE PTR [BX+1234h] FE 87 34 12
-e.g. INC WORD PTR [BX+1234h] FF 87 34 12
-e.g. INC WORD PTR [BP+1234h] FF 86 34 12
-e.g. INC WORD PTR [1234h] FF 06 34 12
-e.g. INC WORD PTR [12h] FF 06 12 00
+e.g. INC WORD PTR [BX+SI+1234h] => FF 84 34 12 (ChatGPT shows this code, so it might be wrong)
+e.g. INC BYTE PTR [BX+1234h] => FE 87 34 12
+e.g. INC WORD PTR [BX+1234h] => FF 87 34 12
+e.g. INC WORD PTR [BP+1234h] => FF 86 34 12
+e.g. INC WORD PTR [1234h] => FF 06 34 12
+e.g. INC WORD PTR [12h] => FF 06 12 00
 1-byte Opcode bit 7-1: 1111111
 1-byte W bit 0: 0-8bit, 1-16bit
 2-byte mod-bit 7-6
-  * 00-use only 16-bit displacement of next two bytes of instruction
-  * 10-use base register and 16bit displacement of next two bytes of instruction
+  * 00-use only 16-bit displacement of next two bytes of instruction (inc word ptr [1234h])
+  * 10-use base register and 16bit displacement of next two bytes of instruction (inc word ptr [bx+si+1234h])
        (next byte->least significant eight bits, byte after that->most sig bits)
 2-byte Opcode 5-3: 000
 2-byte r/m 2-0: (base and index register)
+  * 110-when mode is 00, direct addressing mode
+  * base/index register table when mode is 10
 3-byte Displacement 7-0
 4-byte Displacement 15-8
+
+5. 5-byte form: use ES segment registers
+1-byte: 0010_0110 (ES)
+2~5-byte: same to 4-byte form
 
 mod table for addressing
 00 16-bit displacement (=> 2-byte and 4-byte form)
 01 8-bit contents of next byte of instruction sign extended to 16 bits (=> 3-byte form)
 10 16-bit contents of next two bytes of instruction (=> 4-byte form)
-11 NOT used for addressing
+11 NOT used for memory addressing, increase the value in register
 
 register table
 000 AX AL
@@ -70,15 +78,15 @@ register table
 111 DI BH
 
 base/index table when mod != 11
-r/m field | Base register | Index Register
-000       | BX            | SI
-001       | BX            | DI
-010       | BP            | SI
-011       | BP            | DI
-100       | none          | SI
-101       | none          | DI
-110       | BP            | none
-111       | BX            | none
+r/m field | Base register | Index Register | address
+000       | BX            | SI             | DS:BX + SI + displacement
+001       | BX            | DI             | DS:BX + DI + displacement
+010       | BP            | SI             | SP:BP + SI + displacement
+011       | BP            | DI             | SP:BP + DI + displacement
+100       | none          | SI             | DS:SI + displacement
+101       | none          | DI             | DS:DI + displacement
+110       | BP            | none           | SP:BP + displacement
+111       | BX            | none           | DS:BX + displacement
 
 */
 
