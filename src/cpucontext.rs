@@ -1,8 +1,7 @@
-use crate::common::count_bit;
 use paste::paste;
 use std::fmt;
 
-macro_rules! setter_and_getter_reg {
+macro_rules! setter_and_getter_reg16 {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
@@ -11,6 +10,36 @@ macro_rules! setter_and_getter_reg {
                 }
                 fn [<get_ $reg>](&self) -> u16 {
                     self.$reg
+                }
+            )+
+        }
+    };
+}
+
+macro_rules! setter_and_getter_reg_high {
+    ( $($reg:ident),+ ) => {
+        paste! {
+            $(
+                fn [<set_ $reg h>](&mut self, v: u16) {
+                    self.[<$reg x>] |= (v << 8); // ax, bx, cx, dx
+                }
+                fn [<get_ $reg h>](&self) -> u16 {
+                    (self.[<$reg x>] & 0xff) >> 8 // ax, bx, cx, dx
+                }
+            )+
+        }
+    };
+}
+
+macro_rules! setter_and_getter_reg_low {
+    ( $($reg:ident),+ ) => {
+        paste! {
+            $(
+                fn [<set_ $reg l>](&mut self, v: u16) {
+                    self.[<$reg x>] |= (v & 0xff); // ax, bx, cx, dx
+                }
+                fn [<get_ $reg l>](&self) -> u16 {
+                    self.[<$reg x>] & 0xff // ax, bx, cx, dx
                 }
             )+
         }
@@ -126,7 +155,9 @@ impl CpuContext {
     // ....0xe:0xfffe
     // ....when sp gets underflow, ss is decreased.
     // 3. [ss:sp] = ax
-    setter_and_getter_reg!(ax, bx, cx, dx, si, di, bp, sp, cs, ds, es, ss, ip, flags);
+    setter_and_getter_reg16!(ax, bx, cx, dx, si, di, bp, sp, cs, ds, es, ss, ip, flags);
+    setter_and_getter_reg_high!(a, b, c, d);
+    setter_and_getter_reg_low!(a, b, c, d);
 
     setter_and_resetter_flag!(PF, ZF, SF, OF, CF);
 
@@ -136,6 +167,14 @@ impl CpuContext {
             "bx" => self.get_bx(),
             "cx" => self.get_cx(),
             "dx" => self.get_dx(),
+            "al" => self.get_al(),
+            "ah" => self.get_ah(),
+            "bl" => self.get_bl(),
+            "bh" => self.get_bh(),
+            "cl" => self.get_cl(),
+            "ch" => self.get_ch(),
+            "dl" => self.get_dl(),
+            "dh" => self.get_dh(),
             "si" => self.get_si(),
             "di" => self.get_di(),
             "bp" => self.get_bp(),
@@ -151,19 +190,20 @@ impl CpuContext {
         Ok(r)
     }
 
-    fn is_general_reg(&self, reg: &str) -> bool {
-        match reg {
-            "ax" | "bx" | "cx" | "dx" | "si" | "di" => true,
-            _ => false,
-        }
-    }
-
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
         match reg {
             "ax" => self.set_ax(v),
             "bx" => self.set_bx(v),
             "cx" => self.set_cx(v),
             "dx" => self.set_dx(v),
+            "al" => self.set_al(v),
+            "ah" => self.set_ah(v),
+            "bl" => self.set_bl(v),
+            "bh" => self.set_bh(v),
+            "cl" => self.set_cl(v),
+            "ch" => self.set_ch(v),
+            "dl" => self.set_dl(v),
+            "dh" => self.set_dh(v),
             "si" => self.set_si(v),
             "di" => self.set_di(v),
             "bp" => self.set_bp(v),
