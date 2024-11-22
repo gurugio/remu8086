@@ -30,12 +30,16 @@ reg8 = { "ah" | "al" | "bh" | "bl" | "ch" | "cl" | "dh" | "dl" }
 /// Three hex digit form: 0xabcd, 0abcdh, 1abch
 imm = @{ "0x" ~ hex+ | "0" ~ ("a" | "b" | "c" | "d" | "e" | "f")+ ~ hex* ~ "h" | ASCII_DIGIT ~ hex* ~ "h" }
 
+// direct addressing: use only address such as [0a0h] or [1234h]
 mem = _{ mem8 | mem16 }
 mem8 = { "byte ptr" ~ memx }
 mem16 = { "word ptr" ~ memx | memx }
 memx = @{ "[" ~ imm ~ "]" }
 
-indirect = { "[" ~ base ~ "+" ~ index ~ "]" | "[" ~ base ~ "]" | "[" ~ index ~ "]" }
+// indirect addressing: use base/index register and address [bx + si + 1234h] or [bx + 10h]
+indirect = { indirect_reg | indirect_disp }
+indirect_reg = _{ "[" ~ base ~ "+" ~ index ~ "]" | "[" ~ base ~ "]" | "[" ~ index ~ "]" }
+indirect_disp = _{ "[" ~ base ~ "+" ~ index ~ "+" ~ imm ~ "]" | "[" ~ base ~ "+" ~ imm ~ "]" | "[" ~ index ~ "+" ~ imm ~"]" }
 base = { "bx" | "bp" }
 index = { "si" | "di" }
 

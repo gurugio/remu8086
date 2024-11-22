@@ -269,8 +269,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parser_indirect_addressing() {
-        // Eight indirect address operands
+    fn test_parser_indirect_addressing_only_reg() {
         // [bx + si]
         // [bx + di]
         // [bp + si]
@@ -321,5 +320,66 @@ mod tests {
         let di = inner.next().unwrap();
         assert_eq!(Rule::index, di.as_rule());
         assert_eq!("di", di.as_str());
+    }
+
+    #[test]
+    fn test_parser_indirect_addressing_with_disp() {
+        // [bx + si + 1234h]
+        // [bx + di + 1234h]
+        // [bp + si + 1234h]
+        // [bp + di + 1234h]
+        // [si + 1234h]
+        // [di + 1234h]
+        // [bp + 1234h]
+        // [bx + 1234h]
+
+        let operand = "[bx + si + 1234h]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[bx + si + 1234h]", parsed.as_str());
+        let mut inner = parsed.into_inner();
+        let bx = inner.next().unwrap();
+        assert_eq!(Rule::base, bx.as_rule());
+        assert_eq!("bx", bx.as_str());
+        let si = inner.next().unwrap();
+        assert_eq!(Rule::index, si.as_rule());
+        assert_eq!("si", si.as_str());
+        let disp = inner.next().unwrap();
+        assert_eq!(Rule::imm, disp.as_rule());
+        assert_eq!("1234h", disp.as_str());
+
+        let operand = "[bp + 1234h]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[bp + 1234h]", parsed.as_str());
+
+        let mut inner = parsed.into_inner();
+        let bp = inner.next().unwrap();
+        assert_eq!(Rule::base, bp.as_rule());
+        assert_eq!("bp", bp.as_str());
+        let disp = inner.next().unwrap();
+        assert_eq!(Rule::imm, disp.as_rule());
+        assert_eq!("1234h", disp.as_str());
+
+        let operand = "[di + 1234h]";
+        let parsed = AssemblyParser::parse(Rule::indirect, operand)
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::indirect, parsed.as_rule());
+        assert_eq!("[di + 1234h]", parsed.as_str());
+        let mut inner = parsed.into_inner();
+        let di = inner.next().unwrap();
+        assert_eq!(Rule::index, di.as_rule());
+        assert_eq!("di", di.as_str());
+        let disp = inner.next().unwrap();
+        assert_eq!(Rule::imm, disp.as_rule());
+        assert_eq!("1234h", disp.as_str());
     }
 }
