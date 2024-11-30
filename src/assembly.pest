@@ -15,8 +15,8 @@ cmp = { "cmp" ~ operand ~ "," ~ operand }
 org = { "org" ~ imm }
 inc = { "inc" ~ operand }
 
-name = { ASCII_ALPHANUMERIC+ }
-label = { ASCII_ALPHANUMERIC+ ~ ":" }
+name = { ASCII_ALPHA ~ ASCII_ALPHANUMERIC+ }
+label = { name ~ ":" }
 operand = _{ register | imm | mem | indirect }
 
 /// Operand should be parsed into reg8/reg16/imm.
@@ -28,7 +28,7 @@ reg8 = { "ah" | "al" | "bh" | "bl" | "ch" | "cl" | "dh" | "dl" }
 /// Allow only HEX digit in assembly code
 /// Atomic rule: No whitespace between 0x and others
 /// Three hex digit form: 0xabcd, 0abcdh, 1abch
-imm = @{ "0x" ~ hex+ | "0" ~ ("a" | "b" | "c" | "d" | "e" | "f")+ ~ hex* ~ "h" | ASCII_DIGIT ~ hex* ~ "h" }
+imm = @{ "0x" ~ ASCII_HEX_DIGIT+ | ASCII_HEX_DIGIT+ ~ "h" }
 
 // direct addressing: use only address such as [0a0h] or [1234h]
 mem = _{ mem8 | mem16 }
@@ -42,5 +42,3 @@ indirect_reg = _{ "[" ~ base ~ "+" ~ index ~ "]" | "[" ~ base ~ "]" | "[" ~ inde
 indirect_disp = _{ "[" ~ base ~ "+" ~ index ~ "+" ~ imm ~ "]" | "[" ~ base ~ "+" ~ imm ~ "]" | "[" ~ index ~ "+" ~ imm ~"]" }
 base = { "bx" | "bp" }
 index = { "si" | "di" }
-
-hex = @{ ASCII_DIGIT | "a" | "b" | "c" | "d" | "e" | "f" }
