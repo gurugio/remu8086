@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_parser_program() {
-        let program = "mov ax, bx\nadd cx, 0x1234\njmp 1\n1:";
+        let program = "mov ax, bx\nadd cx, 0x1234\njmp label1\nlabel1:";
         let file = AssemblyParser::parse(Rule::program, program)
             .expect("Failed to parse multiline-instructions with Rule::program rule") // unwrap the parse result
             .next()
