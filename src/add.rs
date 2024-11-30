@@ -5,6 +5,30 @@ use paste::paste;
 use pest::iterators::Pair;
 
 /*
+ADD opcode
+
+1. 2-byte form
+e.g. add ch, bl
+1-byte Opcode bit 7-2: opcode 000000
+1-byte D bit 1: 1 (Always 1 in this program)
+1-byte W bit 0: 0 (8bit operand)
+2-byte mod(bit 7-6): 11 (register operand)
+2-byte reg bit 5-3: 101 (ch)
+2-byte r/m(2-0): 011 (bl)
+
+4. 4-byte form
+e.g. add ax, [000c] 03 06 0c 00
+1-byte opcode bit 7-2: 000000
+1-byte D bit 1: 1
+1-byte W bit 1: 1 (16bit operand)
+2-byte mod bit 7-6: 00 (memory)
+2-byte reg bit 5-3: 000 (ax)
+2-byte r/m bit 2-0: 110
+  * When mode is 00, 110 means direct addressing mode.
+  * When mode is 10, see base/index register table
+*/
+
+/*
 /// ADD AL, imm8 $04
 /// ADD AX, imm16 $05
 /// ADD reg8, r/m8 $02
