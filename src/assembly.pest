@@ -37,7 +37,9 @@ mem16 = { "word ptr" ~ memx | memx }
 memx = @{ "[" ~ imm ~ "]" }
 
 // indirect addressing: use base/index register and address [bx + si + 1234h] or [bx + 10h]
-indirect = { indirect_reg | indirect_disp }
+indirect = _{ indirect8 | indirect16 }
+indirect8 = { "byte ptr" ~ indirect_reg | "byte ptr" ~ indirect_disp }
+indirect16 = { "word ptr" ~ indirect_reg | indirect_reg | "word ptr" ~ indirect_disp | indirect_disp }
 indirect_reg = _{ "[" ~ base ~ "+" ~ index ~ "]" | "[" ~ base ~ "]" | "[" ~ index ~ "]" }
 indirect_disp = _{ "[" ~ base ~ "+" ~ index ~ "+" ~ imm ~ "]" | "[" ~ base ~ "+" ~ imm ~ "]" | "[" ~ index ~ "+" ~ imm ~"]" }
 base = { "bx" | "bp" }
