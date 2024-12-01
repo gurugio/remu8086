@@ -333,13 +333,13 @@ mod tests {
         // [bp + 1234h]
         // [bx + 1234h]
 
-        let operand = "[bx + si + 1234h]";
+        let operand = "word ptr [bx + si + 1234h]";
         let parsed = AssemblyParser::parse(Rule::indirect16, operand)
             .unwrap()
             .next()
             .unwrap();
         assert_eq!(Rule::indirect16, parsed.as_rule());
-        assert_eq!("[bx + si + 1234h]", parsed.as_str());
+        assert_eq!("word ptr [bx + si + 1234h]", parsed.as_str());
         let mut inner = parsed.into_inner();
         let bx = inner.next().unwrap();
         assert_eq!(Rule::base, bx.as_rule());
