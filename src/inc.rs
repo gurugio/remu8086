@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use crate::parser::Rule;
+use crate::parser::{self, Rule};
 use crate::{cpucontext::CpuContext, define_handler_one};
 use paste::paste;
 use pest::iterators::Pair;
@@ -28,6 +28,8 @@ e.g. inc dl FE C2
   * register table when mod=11
 
 3. 3-byte form: inc memory location with 8-bit address (e.g. INC BYTE PTR [BX+10h])
+>>>> DO we really need to implement 3-byte form? 3-byte form is for memory optimization.
+>>>> It could be enough to implement only 4-byte form because 4-byte form is a extended version of 3-byte form.
 e.g. INC BYTE PTR [BX+10h] => FE 47 10
 e.g. INC WORD PTR [BX+SI+10h] => FF 84 10
 1-byte Opcode bit 7-1: 1111111
@@ -38,7 +40,7 @@ e.g. INC WORD PTR [BX+SI+10h] => FF 84 10
 3-byte Displacement 7-0
 
 4. 4-byte form: inc memory location with 16-bit address
-e.g. INC WORD PTR [BX+SI+1234h] => FF 84 34 12 (ChatGPT shows this code, so it might be wrong)
+e.g. INC WORD PTR [BX+SI+1234h] => FF 84 34 12 (ChatGPT shows this code, so it could be wrong)
 e.g. INC BYTE PTR [BX+1234h] => FE 87 34 12
 e.g. INC WORD PTR [BX+1234h] => FF 87 34 12
 e.g. INC WORD PTR [BP+1234h] => FF 86 34 12
@@ -122,7 +124,7 @@ const WBIT_SHIFT: u8 = 0;
 // 2nd byte
 const MOD_SHIFT: u8 = 6;
 const OPCODE2_SHIFT: u8 = 3;
-const REG_SHIFT: u8 = 0; // register table or base-index-register table
+const RM_SHIFT: u8 = 0; // register table or base-index-register table
 
 fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
     let mut v: Vec<u8> = Vec::new();
@@ -131,15 +133,38 @@ fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
         let opcode = 0x40;
         v.push(reg | opcode);
     } else if operand.as_rule() == Rule::reg8 {
-        let opcode = 0x7f << OPCODE1_SHIFT;
+        let opcode1 = 0x7f << OPCODE1_SHIFT;
         let wbit = 0x0 << WBIT_SHIFT;
-        v.push(opcode | wbit);
+        v.push(opcode1 | wbit);
+
         let modbit = 0x3 << MOD_SHIFT;
         let opcode2 = 0x0 << OPCODE2_SHIFT;
-        let reg = register_table(operand.as_str()).unwrap() << REG_SHIFT;
-        v.push(modbit | opcode2 | reg);
+        let rmbit = register_table(operand.as_str()).unwrap() << RM_SHIFT;
+        v.push(modbit | opcode2 | rmbit);
+    } else if operand.as_rule() == Rule::mem16 {
+        // inc word ptr [12h] or inc word ptr [1234h]
+        let opcode1 = 0x7f << OPCODE1_SHIFT;
+        let wbit = 0x1 << WBIT_SHIFT;
+        v.push(opcode1 | wbit);
+
+        let modbit = 0 /* direct addressing */ << MOD_SHIFT;
+        let opcode2 = 0 << OPCODE2_SHIFT;
+        let rmbit = 0x6 << RM_SHIFT; // direct addressing: mod=00, rm=110
+        v.push(modbit | opcode2 | rmbit);
+
+        let address = parser::mem_to_num(&operand).unwrap();
+        assert!(address <= 0xffff);
+        // Little-endian: first low byte, second high byte
+        v.push((address & 0xff).try_into().unwrap());
+        v.push(((address & 0xff00) >> 8).try_into().unwrap());
+    } else if operand.as_rule() == Rule::mem8 {
+        // inc byte ptr [12h] or inc byte ptr [1234h]
+        unimplemented!("inc 8-byte memory not implemented yet")
+    } else if operand.as_rule() == Rule::indirect {
+        // inc [bx + si + 1234h]
+        unimplemented!("inc indirect memory not implemented yet")
     } else {
-        unimplemented!("inc memory not implemented yet")
+        panic!("Unknown form of inc operation")
     }
     v
 }
@@ -158,9 +183,7 @@ define_handler_one!(inc, first, cpu, memory, {
             let v = cpu.get_register(first.as_str()).unwrap();
             cpu.set_register(first.as_str(), v + 1).unwrap();
         }
-        Rule::mem16 => {
-            unimplemented!("handle inc memory not implemented yet")
-        }
+        Rule::mem16 => {}
         _ => println!("Not supported operand for org:{:?}", first),
     }
 });
@@ -203,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inc_threebyte_form() {
+    fn test_inc_fourbyte_form() {
         let parsed = AssemblyParser::parse(Rule::instruction, "inc [1234h]")
             .unwrap()
             .next()
@@ -215,5 +238,21 @@ mod tests {
         assert_eq!(0x1234, parser::mem_to_num(&operand).unwrap());
 
         let v = assemble_inc(&operand);
+        assert_eq!(0xff, v[0]);
+        assert_eq!(0x06, v[1]);
+        assert_eq!(0x34, v[2]);
+        assert_eq!(0x12, v[3]);
+
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc [12h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        let v = assemble_inc(&operand);
+        assert_eq!(0xff, v[0]);
+        assert_eq!(0x06, v[1]);
+        assert_eq!(0x12, v[2]);
+        assert_eq!(0x00, v[3]);
     }
 }
