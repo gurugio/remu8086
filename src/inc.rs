@@ -40,7 +40,7 @@ e.g. INC WORD PTR [BX+SI+10h] => FF 84 10
 3-byte Displacement 7-0
 
 4. 4-byte form: inc memory location with 16-bit address
-e.g. INC WORD PTR [BX+SI+1234h] => FF 84 34 12 (ChatGPT shows this code, so it could be wrong)
+e.g. INC WORD PTR [BX+SI+1234h] => FF 80 34 12
 e.g. INC BYTE PTR [BX+1234h] => FE 87 34 12
 e.g. INC WORD PTR [BX+1234h] => FF 87 34 12
 e.g. INC WORD PTR [BP+1234h] => FF 86 34 12
@@ -109,6 +109,13 @@ fn register_table(reg: &str) -> Result<u8, String> {
 fn base_index_table(base: Option<&str>, index: Option<&str>) -> Result<u8, String> {
     match (base, index) {
         (Some("bx"), Some("si")) => Ok(0),
+        (Some("bx"), Some("di")) => Ok(1),
+        (Some("bp"), Some("si")) => Ok(2),
+        (Some("bp"), Some("fi")) => Ok(3),
+        (None, /* */ Some("si")) => Ok(4),
+        (None, /* */ Some("di")) => Ok(5),
+        (Some("bp"), None) => Ok(6),
+        (Some("bx"), None) => Ok(7),
         _ => Err(format!(
             "{:?} {:?} is not in the base index table",
             base, index
@@ -159,10 +166,97 @@ fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
         v.push(((address & 0xff00) >> 8).try_into().unwrap());
     } else if operand.as_rule() == Rule::mem8 {
         // inc byte ptr [12h] or inc byte ptr [1234h]
-        unimplemented!("inc 8-byte memory not implemented yet")
-    } else if operand.as_rule() == Rule::indirect {
+        // Same to Rule::mem16 except W-bit
+        let opcode1 = 0x7f << OPCODE1_SHIFT;
+        let wbit = 0x0 << WBIT_SHIFT;
+        v.push(opcode1 | wbit);
+
+        let modbit = 0 /* direct addressing */ << MOD_SHIFT;
+        let opcode2 = 0 << OPCODE2_SHIFT;
+        let rmbit = 0x6 << RM_SHIFT; // direct addressing: mod=00, rm=110
+        v.push(modbit | opcode2 | rmbit);
+
+        let address = parser::mem_to_num(&operand).unwrap();
+        assert!(address <= 0xffff);
+        // Little-endian: first low byte, second high byte
+        v.push((address & 0xff).try_into().unwrap());
+        v.push(((address & 0xff00) >> 8).try_into().unwrap());
+    } else if operand.as_rule() == Rule::indirect16 {
         // inc [bx + si + 1234h]
-        unimplemented!("inc indirect memory not implemented yet")
+        let opcode1 = 0x7f << OPCODE1_SHIFT;
+        let wbit = 0x1 << WBIT_SHIFT;
+        v.push(opcode1 | wbit);
+
+        // We use only 00 and 10 for indirect addressing
+        let modbit = 0x2 << MOD_SHIFT;
+        let opcode2 = 0 << OPCODE2_SHIFT;
+
+        // Get rmbit value from base/index register table
+        let basereg;
+        let indexreg;
+        let displacement;
+        let mut inner = operand.clone().into_inner();
+        let index;
+        let base = inner.next().unwrap();
+        if base.as_rule() == Rule::base {
+            basereg = Some(base.as_str());
+            index = inner.next().unwrap();
+        } else {
+            basereg = None;
+            index = base;
+        }
+        if index.as_rule() == Rule::index {
+            indexreg = Some(index.as_str());
+            displacement = inner.next().unwrap();
+        } else {
+            indexreg = None;
+            displacement = index;
+        }
+        let rmbit = base_index_table(basereg, indexreg).unwrap();
+        v.push(modbit | opcode2 | rmbit);
+
+        assert_eq!(Rule::imm, displacement.as_rule());
+        let disp = parser::imm_to_num(&displacement).unwrap();
+        v.push((disp & 0xff).try_into().unwrap());
+        v.push(((disp & 0xff00) >> 8).try_into().unwrap());
+    } else if operand.as_rule() == Rule::indirect8 {
+        // inc byte ptr [bx + si + 1234h]
+        let opcode1 = 0x7f << OPCODE1_SHIFT;
+        let wbit = 0x0 << WBIT_SHIFT;
+        v.push(opcode1 | wbit);
+
+        // We use only 00 and 10 for indirect addressing
+        let modbit = 0x2 << MOD_SHIFT;
+        let opcode2 = 0 << OPCODE2_SHIFT;
+
+        // Get rmbit value from base/index register table
+        let basereg;
+        let indexreg;
+        let displacement;
+        let mut inner = operand.clone().into_inner();
+        let index;
+        let base = inner.next().unwrap();
+        if base.as_rule() == Rule::base {
+            basereg = Some(base.as_str());
+            index = inner.next().unwrap();
+        } else {
+            basereg = None;
+            index = base;
+        }
+        if index.as_rule() == Rule::index {
+            indexreg = Some(index.as_str());
+            displacement = inner.next().unwrap();
+        } else {
+            indexreg = None;
+            displacement = index;
+        }
+        let rmbit = base_index_table(basereg, indexreg).unwrap();
+        v.push(modbit | opcode2 | rmbit);
+
+        assert_eq!(Rule::imm, displacement.as_rule());
+        let disp = parser::imm_to_num(&displacement).unwrap();
+        v.push((disp & 0xff).try_into().unwrap());
+        v.push(((disp & 0xff00) >> 8).try_into().unwrap());
     } else {
         panic!("Unknown form of inc operation")
     }
@@ -226,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inc_fourbyte_form() {
+    fn test_inc_fourbyte_form_direct_addressing() {
         let parsed = AssemblyParser::parse(Rule::instruction, "inc [1234h]")
             .unwrap()
             .next()
@@ -252,6 +346,75 @@ mod tests {
         let v = assemble_inc(&operand);
         assert_eq!(0xff, v[0]);
         assert_eq!(0x06, v[1]);
+        assert_eq!(0x12, v[2]);
+        assert_eq!(0x00, v[3]);
+
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc byte ptr [12h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        let v = assemble_inc(&operand);
+        assert_eq!(0xfe, v[0]);
+        assert_eq!(0x06, v[1]);
+        assert_eq!(0x12, v[2]);
+        assert_eq!(0x00, v[3]);
+    }
+
+    #[test]
+    fn test_inc_fourbyte_form_indirect_addressing() {
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc [bx + si + 1234h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        assert_eq!(Rule::indirect16, operand.as_rule());
+        assert_eq!("[bx + si + 1234h]", operand.as_str());
+
+        let v = assemble_inc(&operand);
+        assert_eq!(0xff, v[0]);
+        assert_eq!(0x80, v[1]);
+        assert_eq!(0x34, v[2]);
+        assert_eq!(0x12, v[3]);
+
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc [bx + 12h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        assert_eq!(Rule::indirect16, operand.as_rule());
+        let v = assemble_inc(&operand);
+        assert_eq!(0xff, v[0]);
+        assert_eq!(0x87, v[1]);
+        assert_eq!(0x12, v[2]);
+        assert_eq!(0x00, v[3]);
+
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc [si + 12h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        assert_eq!(Rule::indirect16, operand.as_rule());
+        let v = assemble_inc(&operand);
+        assert_eq!(0xff, v[0]);
+        assert_eq!(0x84, v[1]);
+        assert_eq!(0x12, v[2]);
+        assert_eq!(0x00, v[3]);
+
+        let parsed = AssemblyParser::parse(Rule::instruction, "inc byte ptr [si + 12h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::inc, parsed.as_rule());
+        let operand = parsed.into_inner().next().unwrap();
+        assert_eq!(Rule::indirect8, operand.as_rule());
+        let v = assemble_inc(&operand);
+        assert_eq!(0xfe, v[0]);
+        assert_eq!(0x84, v[1]);
         assert_eq!(0x12, v[2]);
         assert_eq!(0x00, v[3]);
     }
