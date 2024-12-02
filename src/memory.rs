@@ -3,7 +3,9 @@ use std::fmt;
 
 pub struct Memory {
     data: Box<[u8; 1024 * 1024]>, // 1MB 크기의 배열
-    last_address: RefCell<usize>,
+    // BUGBUG: Add segment register for last address
+    // last_address: RefCell<(u16, u16)>
+    last_address: RefCell<u16>,
 }
 
 impl Memory {
@@ -30,29 +32,33 @@ impl Memory {
     // BUGBUG!! Add address range check and return error
     //
 
-    // 메모리에서 읽기
-    pub fn read8(&self, address: usize) -> u8 {
+    //
+    // BUGBUG!! User segment:address address
+    // read8(&self, segment: u16, address: u16)
+    //
+
+    pub fn read8(&self, address: u16) -> u8 {
         *self.last_address.borrow_mut() = address;
-        self.data[address]
+        self.data[address as usize]
     }
-    pub fn read16(&self, address: usize) -> u16 {
+    pub fn read16(&self, address: u16) -> u16 {
         *self.last_address.borrow_mut() = address;
         // Little-endian: read first address and the lower byte
-        self.data[address] as u16 | (self.data[address + 1] as u16) << 8
+        self.data[address as usize] as u16 | (self.data[(address + 1) as usize] as u16) << 8
     }
 
     // 메모리에 쓰기
-    pub fn write8(&mut self, address: usize, value: u8) {
+    pub fn write8(&mut self, address: u16, value: u8) {
         *self.last_address.borrow_mut() = address;
-        self.data[address] = value;
+        self.data[address as usize] = value;
         println!("{:?}", self);
     }
 
-    pub fn write16(&mut self, address: usize, value: u16) {
+    pub fn write16(&mut self, address: u16, value: u16) {
         // Little-endian: write lower byte first
         *self.last_address.borrow_mut() = address;
-        self.data[address] = (value & 0xff) as u8;
-        self.data[address + 1] = ((value & 0xff00) >> 8) as u8;
+        self.data[address as usize] = (value & 0xff) as u8;
+        self.data[(address + 1) as usize] = ((value & 0xff00) >> 8) as u8;
         println!("{:?}", self);
     }
 }
@@ -62,13 +68,14 @@ impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
 
-        let start = *self.last_address.borrow() & 0xffff0;
+        // BUGBUG: masking will be 0xffff0 when last_address is changed into (seg:addr)
+        let start = *self.last_address.borrow() & 0xffff;
         let end = start + 0xf;
         s.push_str(&format!("{:05X}", start));
         s.push(' ');
         for i in start..=end {
             // DO NOT USE read/write method because it changes last_address value
-            let d = self.data[i];
+            let d = self.data[i as usize];
             let ss = format!("{:02X}", d);
             s.push_str(&ss);
             if i != end {
