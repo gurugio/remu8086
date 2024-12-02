@@ -8,7 +8,7 @@ use pest::iterators::Pair;
 org 100h
 */
 
-define_handler_one!(org, first, cpu, memory, {
+define_handler_one!(org, first, cpu, _memory, {
     match first.as_rule() {
         Rule::imm => {
             let ip: u16 = imm_to_num(&first).unwrap();

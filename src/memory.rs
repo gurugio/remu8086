@@ -24,7 +24,7 @@ impl Memory {
         *self.last_address.borrow_mut() = 0;
     }
 
-    pub fn get(&self) -> Box<[u8; 1024 * 1024]> {
+    pub fn _get(&self) -> Box<[u8; 1024 * 1024]> {
         self.data.clone()
     }
 
