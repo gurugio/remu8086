@@ -160,7 +160,6 @@ fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
         v.push(modbit | opcode2 | rmbit);
 
         let address = parser::mem_to_num(&operand).unwrap();
-        assert!(address <= 0xffff);
         // Little-endian: first low byte, second high byte
         v.push((address & 0xff).try_into().unwrap());
         v.push(((address & 0xff00) >> 8).try_into().unwrap());
@@ -177,7 +176,6 @@ fn assemble_inc(operand: &Pair<Rule>) -> Vec<u8> {
         v.push(modbit | opcode2 | rmbit);
 
         let address = parser::mem_to_num(&operand).unwrap();
-        assert!(address <= 0xffff);
         // Little-endian: first low byte, second high byte
         v.push((address & 0xff).try_into().unwrap());
         v.push(((address & 0xff00) >> 8).try_into().unwrap());
@@ -277,7 +275,92 @@ define_handler_one!(inc, first, cpu, memory, {
             let v = cpu.get_register(first.as_str()).unwrap();
             cpu.set_register(first.as_str(), v + 1).unwrap();
         }
-        Rule::mem16 => {}
+        Rule::mem16 => {
+            let code = assemble_inc(&first);
+            println!("inc code {:?}", code);
+            let address = parser::mem_to_num(&first).unwrap();
+            let v = memory.read16(address);
+            memory.write16(address, v);
+        }
+        Rule::mem8 => {
+            let code = assemble_inc(&first);
+            println!("inc code {:?}", code);
+            let address = parser::mem_to_num(&first).unwrap();
+            let v = memory.read8(address);
+            memory.write8(address, v);
+        }
+        Rule::indirect16 => {
+            let basereg;
+            let indexreg;
+            let displacement;
+            let mut inner = first.clone().into_inner();
+            let index;
+            let base = inner.next().unwrap();
+            if base.as_rule() == Rule::base {
+                basereg = Some(base.as_str());
+                index = inner.next().unwrap();
+            } else {
+                basereg = None;
+                index = base;
+            }
+            if index.as_rule() == Rule::index {
+                indexreg = Some(index.as_str());
+                displacement = inner.next().unwrap();
+            } else {
+                indexreg = None;
+                displacement = index;
+            }
+            assert_eq!(Rule::imm, displacement.as_rule());
+            let disp = parser::imm_to_num(&displacement).unwrap();
+
+            let mut address = disp;
+            if let Some(r) = basereg {
+                let d = cpu.get_register(r).unwrap();
+                address += d;
+            }
+            if let Some(r) = indexreg {
+                let d = cpu.get_register(r).unwrap();
+                address += d;
+            }
+            let v = memory.read16(address);
+            memory.write16(address, v);
+        }
+        Rule::indirect8 => {
+            let basereg;
+            let indexreg;
+            let displacement;
+            let mut inner = first.clone().into_inner();
+            let index;
+            let base = inner.next().unwrap();
+            if base.as_rule() == Rule::base {
+                basereg = Some(base.as_str());
+                index = inner.next().unwrap();
+            } else {
+                basereg = None;
+                index = base;
+            }
+            if index.as_rule() == Rule::index {
+                indexreg = Some(index.as_str());
+                displacement = inner.next().unwrap();
+            } else {
+                indexreg = None;
+                displacement = index;
+            }
+            assert_eq!(Rule::imm, displacement.as_rule());
+            let disp = parser::imm_to_num(&displacement).unwrap();
+
+            let mut address = disp;
+            if let Some(r) = basereg {
+                let d = cpu.get_register(r).unwrap();
+                address += d;
+            }
+            if let Some(r) = indexreg {
+                let d = cpu.get_register(r).unwrap();
+                address += d;
+            }
+            let v = memory.read8(address);
+            memory.write8(address, v);
+        }
         _ => println!("Not supported operand for org:{:?}", first),
     }
 });
@@ -417,5 +500,59 @@ mod tests {
         assert_eq!(0x84, v[1]);
         assert_eq!(0x12, v[2]);
         assert_eq!(0x00, v[3]);
+    }
+
+    #[test]
+    fn test_inc_register() {
+        let mut cpu = crate::cpucontext::CpuContext::boot();
+        let mut memory = crate::memory::Memory::boot();
+
+        cpu.set_register("bx", 0x1234).unwrap();
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc bx")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1235, cpu.get_register("bx").unwrap());
+
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc bl")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1236, cpu.get_register("bx").unwrap());
+    }
+
+    #[test]
+    fn test_inc_memory() {
+        let mut cpu = crate::cpucontext::CpuContext::boot();
+        let mut memory = crate::memory::Memory::boot();
+
+        memory.write16(0x1110, 0x1234);
+        cpu.set_register("bx", 0x1000).unwrap();
+        cpu.set_register("si", 0x100).unwrap();
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc word ptr [bx + si + 10h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1235, memory.read16(0x1110));
+
+        cpu.set_register("bx", 0x1000).unwrap();
+        cpu.set_register("si", 0x100).unwrap();
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [bx + si + 10h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1335, memory.read16(0x1110));
     }
 }
