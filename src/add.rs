@@ -40,7 +40,7 @@ e.g. add ax, [000c] 03 06 0c 00
 /// ADD r/m16, imm8 $83 xx000xxx (ModR/M byte)
 */
 
-fn do_add(cpu: &mut CpuContext, memory: &mut Memory, reg: &str, l: u16, r: u16) {
+fn do_add(cpu: &mut CpuContext, _memory: &mut Memory, reg: &str, l: u16, r: u16) {
     // work-around the overflow checker of Rust
     let l32: u32 = l as u32;
     let r32: u32 = r as u32 + l32;
