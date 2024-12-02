@@ -27,7 +27,7 @@ pub fn imm_to_num(s: &Pair<Rule>) -> Result<u16, String> {
     _imm_to_num(s.as_str())
 }
 
-pub fn mem_to_num(s: &Pair<Rule>) -> Result<usize, String> {
+pub fn mem_to_num(s: &Pair<Rule>) -> Result<u16, String> {
     // [0x1234], word ptr [0x1234], byte ptr [0x1234] -> 0x1234
     // get number between [ and ]
     let s = s.as_str();
@@ -35,7 +35,7 @@ pub fn mem_to_num(s: &Pair<Rule>) -> Result<usize, String> {
         if let Some(end) = s.find(']') {
             if start < end {
                 let r: u16 = _imm_to_num(&s[start + 1..end]).unwrap();
-                return Ok(r as usize);
+                return Ok(r);
             }
         }
     }
