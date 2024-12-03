@@ -266,14 +266,14 @@ define_handler_one!(inc, first, cpu, memory, {
         Rule::reg16 => {
             let code = assemble_inc(&first);
             println!("inc code {:?}", code);
-            let v = cpu.get_register(first.as_str()).unwrap();
-            cpu.set_register(first.as_str(), v + 1).unwrap();
+            let v = cpu.get_register16(first.as_str());
+            cpu.set_register16(first.as_str(), v + 1);
         }
         Rule::reg8 => {
             let code = assemble_inc(&first);
             println!("inc code {:?}", code);
-            let v = cpu.get_register(first.as_str()).unwrap();
-            cpu.set_register(first.as_str(), v + 1).unwrap();
+            let v = cpu.get_register8(first.as_str());
+            cpu.set_register8(first.as_str(), v + 1);
         }
         Rule::mem16 => {
             let code = assemble_inc(&first);
@@ -315,11 +315,11 @@ define_handler_one!(inc, first, cpu, memory, {
 
             let mut address = disp;
             if let Some(r) = basereg {
-                let d = cpu.get_register(r).unwrap();
+                let d = cpu.get_register16(r);
                 address += d;
             }
             if let Some(r) = indexreg {
-                let d = cpu.get_register(r).unwrap();
+                let d = cpu.get_register16(r);
                 address += d;
             }
             let v = memory.read16(address);
@@ -351,11 +351,11 @@ define_handler_one!(inc, first, cpu, memory, {
 
             let mut address = disp;
             if let Some(r) = basereg {
-                let d = cpu.get_register(r).unwrap();
+                let d = cpu.get_register16(r);
                 address += d;
             }
             if let Some(r) = indexreg {
-                let d = cpu.get_register(r).unwrap();
+                let d = cpu.get_register16(r);
                 address += d;
             }
             let v = memory.read8(address);
@@ -507,7 +507,7 @@ mod tests {
         let mut cpu = crate::cpucontext::CpuContext::boot();
         let mut memory = crate::memory::Memory::boot();
 
-        cpu.set_register("bx", 0x1234).unwrap();
+        cpu.set_register16("bx", 0x1234);
         let instruction = AssemblyParser::parse(Rule::instruction, "inc bx")
             .unwrap()
             .next()
@@ -515,7 +515,7 @@ mod tests {
         let mut inner = instruction.into_inner();
         let operand = inner.next().unwrap();
         handler_inc(&mut cpu, &mut memory, operand);
-        assert_eq!(0x1235, cpu.get_register("bx").unwrap());
+        assert_eq!(0x1235, cpu.get_register16("bx"));
 
         let instruction = AssemblyParser::parse(Rule::instruction, "inc bl")
             .unwrap()
@@ -524,7 +524,7 @@ mod tests {
         let mut inner = instruction.into_inner();
         let operand = inner.next().unwrap();
         handler_inc(&mut cpu, &mut memory, operand);
-        assert_eq!(0x1236, cpu.get_register("bx").unwrap());
+        assert_eq!(0x1236, cpu.get_register16("bx"));
 
         let instruction = AssemblyParser::parse(Rule::instruction, "inc bh")
             .unwrap()
@@ -533,7 +533,7 @@ mod tests {
         let mut inner = instruction.into_inner();
         let operand = inner.next().unwrap();
         handler_inc(&mut cpu, &mut memory, operand);
-        assert_eq!(0x1336, cpu.get_register("bx").unwrap());
+        assert_eq!(0x1336, cpu.get_register16("bx"));
     }
 
     #[test]
@@ -581,8 +581,8 @@ mod tests {
         let mut memory = crate::memory::Memory::boot();
 
         memory.write16(0x1110, 0x1234);
-        cpu.set_register("bx", 0x1000).unwrap();
-        cpu.set_register("si", 0x100).unwrap();
+        cpu.set_register16("bx", 0x1000);
+        cpu.set_register16("si", 0x100);
         let instruction = AssemblyParser::parse(Rule::instruction, "inc word ptr [bx + si + 10h]")
             .unwrap()
             .next()
@@ -593,8 +593,8 @@ mod tests {
         handler_inc(&mut cpu, &mut memory, operand);
         assert_eq!(0x1235, memory.read16(0x1110));
 
-        cpu.set_register("bx", 0x1000).unwrap();
-        cpu.set_register("si", 0x100).unwrap();
+        cpu.set_register16("bx", 0x1000);
+        cpu.set_register16("si", 0x100);
         let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [bx + si + 11h]")
             .unwrap()
             .next()

@@ -12,8 +12,8 @@ define_handler_one!(org, first, cpu, _memory, {
     match first.as_rule() {
         Rule::imm => {
             let ip: u16 = imm_to_num(&first).unwrap();
-            cpu.set_register("cs", 0).unwrap();
-            cpu.set_register("ip", ip).unwrap();
+            cpu.set_register16("cs", 0);
+            cpu.set_register16("ip", ip);
         }
         _ => println!("Not supported operand for org:{:?}", first),
     }
