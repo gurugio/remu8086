@@ -71,33 +71,63 @@ fn do_add(cpu: &mut CpuContext, _memory: &mut Memory, reg: &str, l: u16, r: u16)
 }
 
 define_handler_two!(add, first, second, cpu, memory, {
-    match (first.as_rule(), second.as_rule()) {
-        (Rule::reg16, Rule::reg16) => {
-            cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
-                .unwrap();
-            let l: u16 = cpu.get_register(first.as_str()).unwrap();
-            let r: u16 = cpu.get_register(second.as_str()).unwrap();
-            do_add(cpu, memory, first.as_str(), l, r);
+    if first.as_str() == "ax" && second.as_rule() == Rule::imm {
+        // Todo
+    } else if first.as_str() == "al" && second.as_rule() == Rule::imm {
+        // Todo
+    } else {
+        match (first.as_rule(), second.as_rule()) {
+            // 8/16-bit each has 5 operations. Total 10 operations.
+            // reg-reg
+            // reg-mem
+            // reg-imm
+            // mem-reg
+            // mem-imm
+            // There is no mem-mem operation for ALL instruction.
+            (Rule::reg16, Rule::reg16) => {
+                cpu.set_register(first.as_str(), cpu.get_register(second.as_str()).unwrap())
+                    .unwrap();
+                let l: u16 = cpu.get_register(first.as_str()).unwrap();
+                let r: u16 = cpu.get_register(second.as_str()).unwrap();
+                do_add(cpu, memory, first.as_str(), l, r);
+            }
+            (Rule::reg16, Rule::imm) => {
+                let r = imm_to_num(&second).unwrap();
+                let l = cpu.get_register(first.as_str()).unwrap();
+                do_add(cpu, memory, first.as_str(), l, r);
+            }
+            (Rule::reg16, Rule::mem16) => {
+                let address = mem_to_num(&second).unwrap();
+                let v1 = memory.read16(address);
+                let v2 = cpu.get_register(first.as_str()).unwrap();
+                cpu.set_register(first.as_str(), v1 + v2).unwrap();
+            }
+            (Rule::reg8, Rule::reg8) => {
+                // Todo
+            }
+            (Rule::reg8, Rule::imm) => {
+                // Todo
+            }
+            (Rule::reg8, Rule::mem8) => {
+                // Todo
+            }
+            (Rule::mem16, Rule::reg16) => {
+                let address = mem_to_num(&first).unwrap();
+                let v1 = cpu.get_register(second.as_str()).unwrap();
+                let v2 = memory.read16(address);
+                memory.write16(address, v1 + v2);
+            }
+            (Rule::mem16, Rule::imm) => {
+                // Todo
+            }
+            (Rule::mem8, Rule::reg8) => {
+                // Todo
+            }
+            (Rule::mem8, Rule::imm) => {
+                // Todo
+            }
+            _ => println!("Not supported yet:{:?} {:?}", first, second),
         }
-        (Rule::reg16, Rule::imm) => {
-            let r = imm_to_num(&second).unwrap();
-            let l = cpu.get_register(first.as_str()).unwrap();
-            do_add(cpu, memory, first.as_str(), l, r);
-        }
-        (Rule::mem16, Rule::reg16) => {
-            let address = mem_to_num(&first).unwrap();
-            let v1 = cpu.get_register(second.as_str()).unwrap();
-            let v2 = memory.read16(address);
-            memory.write16(address, v1 + v2);
-        }
-        (Rule::reg16, Rule::mem16) => {
-            let address = mem_to_num(&second).unwrap();
-            let v1 = memory.read16(address);
-            let v2 = cpu.get_register(first.as_str()).unwrap();
-            cpu.set_register(first.as_str(), v1 + v2).unwrap();
-        }
-
-        _ => println!("Not supported yet:{:?} {:?}", first, second),
     }
 });
 
