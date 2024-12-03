@@ -109,10 +109,10 @@ fn assemble_add(first: &Pair<Rule>, second: &Pair<Rule>) -> Vec<u8> {
 
 define_handler_two!(add, first, second, cpu, memory, {
     if first.as_str() == "ax" && second.as_rule() == Rule::imm {
-        let l: u16 = cpu.get_register(first.as_str()).unwrap();
+        let l: u16 = cpu.get_register16(first.as_str());
         let r = imm_to_num(&second).unwrap();
         let v = do_add16(cpu, l, r);
-        let _ = cpu.set_register(first.as_str(), v);
+        cpu.set_register16(first.as_str(), v);
     } else if first.as_str() == "al" && second.as_rule() == Rule::imm {
         // TODO
     } else {
@@ -125,23 +125,23 @@ define_handler_two!(add, first, second, cpu, memory, {
             // mem-reg
             // mem-imm
             (Rule::reg16, Rule::reg16) => {
-                let l: u16 = cpu.get_register(first.as_str()).unwrap();
-                let r: u16 = cpu.get_register(second.as_str()).unwrap();
+                let l: u16 = cpu.get_register16(first.as_str());
+                let r: u16 = cpu.get_register16(second.as_str());
                 let v = do_add16(cpu, l, r);
-                let _ = cpu.set_register(first.as_str(), v).unwrap();
+                cpu.set_register16(first.as_str(), v);
             }
             (Rule::reg16, Rule::imm) => {
-                let l = cpu.get_register(first.as_str()).unwrap();
+                let l = cpu.get_register16(first.as_str());
                 let r = imm_to_num(&second).unwrap();
                 let v = do_add16(cpu, l, r);
-                let _ = cpu.set_register(first.as_str(), v).unwrap();
+                let _ = cpu.set_register16(first.as_str(), v);
             }
             (Rule::reg16, Rule::mem16) => {
                 let address = mem_to_num(&second).unwrap();
                 let l = memory.read16(address);
-                let r = cpu.get_register(first.as_str()).unwrap();
+                let r = cpu.get_register16(first.as_str());
                 let v = do_add16(cpu, l, r);
-                let _ = cpu.set_register(first.as_str(), v).unwrap();
+                let _ = cpu.set_register16(first.as_str(), v);
             }
             (Rule::reg8, Rule::reg8) => {
                 // TODO
@@ -155,7 +155,7 @@ define_handler_two!(add, first, second, cpu, memory, {
             (Rule::mem16, Rule::reg16) => {
                 let address = mem_to_num(&first).unwrap();
                 let l = memory.read16(address);
-                let r = cpu.get_register(first.as_str()).unwrap();
+                let r = cpu.get_register16(first.as_str());
                 let v = do_add16(cpu, l, r);
                 memory.write16(address, v);
             }

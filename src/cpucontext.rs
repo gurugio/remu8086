@@ -21,11 +21,12 @@ macro_rules! setter_and_getter_reg_high {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
-                fn [<set_ $reg h>](&mut self, v: u16) {
+                fn [<set_ $reg h>](&mut self, v: u8) {
+                    let v = v as u16;
                     self.[<$reg x>] = ((v & 0xff) << 8) | (self.[<$reg x>] & 0xff);
                 }
-                fn [<get_ $reg h>](&self) -> u16 {
-                    (self.[<$reg x>] & 0xff00) >> 8
+                fn [<get_ $reg h>](&self) -> u8 {
+                    ((self.[<$reg x>] & 0xff00) >> 8) as u8
                 }
             )+
         }
@@ -37,11 +38,12 @@ macro_rules! setter_and_getter_reg_low {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
-                fn [<set_ $reg l>](&mut self, v: u16) {
+                fn [<set_ $reg l>](&mut self, v: u8) {
+                    let v = v as u16;
                     self.[<$reg x>] = (v & 0xff) | (self.[<$reg x>] & 0xff00);
                 }
-                fn [<get_ $reg l>](&self) -> u16 {
-                    self.[<$reg x>] & 0xff // ax, bx, cx, dx
+                fn [<get_ $reg l>](&self) -> u8 {
+                    (self.[<$reg x>] & 0xff) as u8 // ax, bx, cx, dx
                 }
             )+
         }
@@ -163,20 +165,32 @@ impl CpuContext {
 
     setter_and_resetter_flag!(PF, ZF, SF, OF, CF);
 
+    /*
+    get_register8/16 and set_register8/16 does not return Result type
+    because parser already checks the register name.
+    If any instruction uses wrong register name, parser will fail.
+
+    Generic interface get_register and set_register should be used
+    only when the number of bits is ambiguous.
+    */
+
     pub fn get_register(&self, reg: &str) -> Result<u16, String> {
+        match reg {
+            "ax" | "bx" | "cx" | "dx" | "si" | "di" | "bp" | "sp" | "cs" | "ds" | "es" | "ss"
+            | "ip" | "flags" => Ok(self.get_register16(reg)),
+            "al" | "ah" | "bl" | "bh" | "cl" | "ch" | "dl" | "dh" => {
+                Ok(self.get_register8(reg) as u16)
+            }
+            _ => Err("Wrong register specified for get_register".to_owned()),
+        }
+    }
+
+    pub fn get_register16(&self, reg: &str) -> u16 {
         let r = match reg {
             "ax" => self.get_ax(),
             "bx" => self.get_bx(),
             "cx" => self.get_cx(),
             "dx" => self.get_dx(),
-            "al" => self.get_al(),
-            "ah" => self.get_ah(),
-            "bl" => self.get_bl(),
-            "bh" => self.get_bh(),
-            "cl" => self.get_cl(),
-            "ch" => self.get_ch(),
-            "dl" => self.get_dl(),
-            "dh" => self.get_dh(),
             "si" => self.get_si(),
             "di" => self.get_di(),
             "bp" => self.get_bp(),
@@ -187,25 +201,43 @@ impl CpuContext {
             "ss" => self.get_ss(),
             "ip" => self.get_ip(),
             "flags" => self.get_flags(),
-            _ => return Err("Wrong register specified for get_register".to_string()),
+            _ => panic!("Wrong register specified for get_register16"),
         };
-        Ok(r)
+        r
+    }
+
+    pub fn get_register8(&self, reg: &str) -> u8 {
+        let r: u8 = match reg {
+            "al" => self.get_al(),
+            "ah" => self.get_ah(),
+            "bl" => self.get_bl(),
+            "bh" => self.get_bh(),
+            "cl" => self.get_cl(),
+            "ch" => self.get_ch(),
+            "dl" => self.get_dl(),
+            "dh" => self.get_dh(),
+            _ => panic!("Wrong register name for get_register8"),
+        };
+        r
     }
 
     pub fn set_register(&mut self, reg: &str, v: u16) -> Result<(), String> {
+        match reg {
+            "ax" | "bx" | "cx" | "dx" | "si" | "di" | "bp" | "sp" | "cs" | "ds" | "es" | "ss"
+            | "ip" | "flags" => Ok(self.set_register16(reg, v)),
+            "al" | "ah" | "bl" | "bh" | "cl" | "ch" | "dl" | "dh" => {
+                Ok(self.set_register8(reg, (v & 0xff) as u8))
+            }
+            _ => Err("Wrong register specified for set_register".to_owned()),
+        }
+    }
+
+    pub fn set_register16(&mut self, reg: &str, v: u16) {
         match reg {
             "ax" => self.set_ax(v),
             "bx" => self.set_bx(v),
             "cx" => self.set_cx(v),
             "dx" => self.set_dx(v),
-            "al" => self.set_al(v),
-            "ah" => self.set_ah(v),
-            "bl" => self.set_bl(v),
-            "bh" => self.set_bh(v),
-            "cl" => self.set_cl(v),
-            "ch" => self.set_ch(v),
-            "dl" => self.set_dl(v),
-            "dh" => self.set_dh(v),
             "si" => self.set_si(v),
             "di" => self.set_di(v),
             "bp" => self.set_bp(v),
@@ -216,9 +248,22 @@ impl CpuContext {
             "ss" => self.set_ss(v),
             "ip" => self.set_ip(v),
             "flags" => self.set_flags(v),
-            _ => return Err("Wrong register specified for set_register".to_string()),
+            _ => panic!("Wrong register specified for set_register16"),
         };
-        Ok(())
+    }
+
+    pub fn set_register8(&mut self, reg: &str, v: u8) {
+        match reg {
+            "al" => self.set_al(v),
+            "ah" => self.set_ah(v),
+            "bl" => self.set_bl(v),
+            "bh" => self.set_bh(v),
+            "cl" => self.set_cl(v),
+            "ch" => self.set_ch(v),
+            "dl" => self.set_dl(v),
+            "dh" => self.set_dh(v),
+            _ => panic!("Wrong register specified for set_register8"),
+        };
     }
 
     fn describe_flags(&self) -> String {
@@ -313,21 +358,40 @@ mod tests {
         let regh = vec!["ah", "bh", "ch", "dh"];
         let regl = vec!["al", "bl", "cl", "dl"];
 
+        // 8/16bit-operations
+        for i in 0..reg.len() {
+            let _ = cpu.set_register16(reg[i], 0x1234);
+            assert_eq!(0x1234, cpu.get_register16(reg[i]));
+            assert_eq!(0x12, cpu.get_register8(regh[i]));
+            assert_eq!(0x34, cpu.get_register8(regl[i]));
+
+            let _ = cpu.set_register8(regh[i], 0x37);
+            assert_eq!(0x3734, cpu.get_register16(reg[i]));
+            assert_eq!(0x37, cpu.get_register8(regh[i]));
+            assert_eq!(0x34, cpu.get_register8(regl[i]));
+
+            let _ = cpu.set_register8(regl[i], 0x11);
+            assert_eq!(0x3711, cpu.get_register16(reg[i]));
+            assert_eq!(0x37, cpu.get_register8(regh[i]));
+            assert_eq!(0x11, cpu.get_register8(regl[i]));
+        }
+
+        // Generic operation
         for i in 0..reg.len() {
             let _ = cpu.set_register(reg[i], 0x1234);
-            assert_eq!(0x1234, cpu.get_register(reg[i]).unwrap());
-            assert_eq!(0x12, cpu.get_register(regh[i]).unwrap());
-            assert_eq!(0x34, cpu.get_register(regl[i]).unwrap());
+            assert_eq!(Ok(0x1234), cpu.get_register(reg[i]));
+            assert_eq!(Ok(0x12), cpu.get_register(regh[i]));
+            assert_eq!(Ok(0x34), cpu.get_register(regl[i]));
 
             let _ = cpu.set_register(regh[i], 0x37);
-            assert_eq!(0x3734, cpu.get_register(reg[i]).unwrap());
-            assert_eq!(0x37, cpu.get_register(regh[i]).unwrap());
-            assert_eq!(0x34, cpu.get_register(regl[i]).unwrap());
+            assert_eq!(Ok(0x3734), cpu.get_register(reg[i]));
+            assert_eq!(Ok(0x37), cpu.get_register(regh[i]));
+            assert_eq!(Ok(0x34), cpu.get_register(regl[i]));
 
             let _ = cpu.set_register(regl[i], 0x11);
-            assert_eq!(0x3711, cpu.get_register(reg[i]).unwrap());
-            assert_eq!(0x37, cpu.get_register(regh[i]).unwrap());
-            assert_eq!(0x11, cpu.get_register(regl[i]).unwrap());
+            assert_eq!(Ok(0x3711), cpu.get_register(reg[i]));
+            assert_eq!(Ok(0x37), cpu.get_register(regh[i]));
+            assert_eq!(Ok(0x11), cpu.get_register(regl[i]));
         }
     }
 }
