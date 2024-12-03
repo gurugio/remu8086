@@ -280,14 +280,14 @@ define_handler_one!(inc, first, cpu, memory, {
             println!("inc code {:?}", code);
             let address = parser::mem_to_num(&first).unwrap();
             let v = memory.read16(address);
-            memory.write16(address, v);
+            memory.write16(address, v + 1);
         }
         Rule::mem8 => {
             let code = assemble_inc(&first);
             println!("inc code {:?}", code);
             let address = parser::mem_to_num(&first).unwrap();
             let v = memory.read8(address);
-            memory.write8(address, v);
+            memory.write8(address, v + 1);
         }
         Rule::indirect16 => {
             let basereg;
@@ -323,7 +323,7 @@ define_handler_one!(inc, first, cpu, memory, {
                 address += d;
             }
             let v = memory.read16(address);
-            memory.write16(address, v);
+            memory.write16(address, v + 1);
         }
         Rule::indirect8 => {
             let basereg;
@@ -359,7 +359,7 @@ define_handler_one!(inc, first, cpu, memory, {
                 address += d;
             }
             let v = memory.read8(address);
-            memory.write8(address, v);
+            memory.write8(address, v + 1);
         }
         _ => println!("Not supported operand for org:{:?}", first),
     }
@@ -551,6 +551,28 @@ mod tests {
         assert_eq!("word ptr [1110h]", operand.as_str());
         handler_inc(&mut cpu, &mut memory, operand);
         assert_eq!(0x1235, memory.read16(0x1110));
+
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [1110h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        assert_eq!("byte ptr [1110h]", operand.as_str());
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1236, memory.read16(0x1110));
+        assert_eq!(0x36, memory.read8(0x1110));
+
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [1111h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        assert_eq!("byte ptr [1111h]", operand.as_str());
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1336, memory.read16(0x1110));
+        assert_eq!(0x13, memory.read8(0x1111));
     }
 
     #[test]
@@ -573,7 +595,7 @@ mod tests {
 
         cpu.set_register("bx", 0x1000).unwrap();
         cpu.set_register("si", 0x100).unwrap();
-        let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [bx + si + 10h]")
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc byte ptr [bx + si + 11h]")
             .unwrap()
             .next()
             .unwrap();
