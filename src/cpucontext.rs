@@ -16,27 +16,29 @@ macro_rules! setter_and_getter_reg16 {
     };
 }
 
+/// Only for ax, bx, cx, dx
 macro_rules! setter_and_getter_reg_high {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
                 fn [<set_ $reg h>](&mut self, v: u16) {
-                    self.[<$reg x>] |= (v << 8); // ax, bx, cx, dx
+                    self.[<$reg x>] = ((v & 0xff) << 8) | (self.[<$reg x>] & 0xff);
                 }
                 fn [<get_ $reg h>](&self) -> u16 {
-                    (self.[<$reg x>] & 0xff) >> 8 // ax, bx, cx, dx
+                    (self.[<$reg x>] & 0xff00) >> 8
                 }
             )+
         }
     };
 }
 
+/// Only for ax, bx, cx, dx
 macro_rules! setter_and_getter_reg_low {
     ( $($reg:ident),+ ) => {
         paste! {
             $(
                 fn [<set_ $reg l>](&mut self, v: u16) {
-                    self.[<$reg x>] |= (v & 0xff); // ax, bx, cx, dx
+                    self.[<$reg x>] = (v & 0xff) | (self.[<$reg x>] & 0xff00);
                 }
                 fn [<get_ $reg l>](&self) -> u16 {
                     self.[<$reg x>] & 0xff // ax, bx, cx, dx
@@ -284,7 +286,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_set_reset_flags() {
+    fn test_cpucontext_set_reset_flags() {
         let mut cpu = CpuContext::boot();
         cpu.set_ZF();
         assert_eq!(ZF_MASK, cpu.get_ZF());
@@ -301,5 +303,31 @@ mod tests {
         assert_eq!(ZF_MASK, cpu.get_ZF());
         cpu.reset_ZF();
         assert_eq!(0, cpu.flags);
+    }
+
+    #[test]
+    fn test_cpucontext_get_set_register() {
+        let mut cpu = CpuContext::boot();
+
+        let reg = vec!["ax", "bx", "cx", "dx"];
+        let regh = vec!["ah", "bh", "ch", "dh"];
+        let regl = vec!["al", "bl", "cl", "dl"];
+
+        for i in 0..reg.len() {
+            let _ = cpu.set_register(reg[i], 0x1234);
+            assert_eq!(0x1234, cpu.get_register(reg[i]).unwrap());
+            assert_eq!(0x12, cpu.get_register(regh[i]).unwrap());
+            assert_eq!(0x34, cpu.get_register(regl[i]).unwrap());
+
+            let _ = cpu.set_register(regh[i], 0x37);
+            assert_eq!(0x3734, cpu.get_register(reg[i]).unwrap());
+            assert_eq!(0x37, cpu.get_register(regh[i]).unwrap());
+            assert_eq!(0x34, cpu.get_register(regl[i]).unwrap());
+
+            let _ = cpu.set_register(regl[i], 0x11);
+            assert_eq!(0x3711, cpu.get_register(reg[i]).unwrap());
+            assert_eq!(0x37, cpu.get_register(regh[i]).unwrap());
+            assert_eq!(0x11, cpu.get_register(regl[i]).unwrap());
+        }
     }
 }
