@@ -525,10 +525,36 @@ mod tests {
         let operand = inner.next().unwrap();
         handler_inc(&mut cpu, &mut memory, operand);
         assert_eq!(0x1236, cpu.get_register("bx").unwrap());
+
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc bh")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1336, cpu.get_register("bx").unwrap());
     }
 
     #[test]
-    fn test_inc_memory() {
+    fn test_inc_memory_direct() {
+        let mut cpu = crate::cpucontext::CpuContext::boot();
+        let mut memory = crate::memory::Memory::boot();
+
+        memory.write16(0x1110, 0x1234);
+        let instruction = AssemblyParser::parse(Rule::instruction, "inc word ptr [1110h]")
+            .unwrap()
+            .next()
+            .unwrap();
+        let mut inner = instruction.into_inner();
+        let operand = inner.next().unwrap();
+        assert_eq!("word ptr [1110h]", operand.as_str());
+        handler_inc(&mut cpu, &mut memory, operand);
+        assert_eq!(0x1235, memory.read16(0x1110));
+    }
+
+    #[test]
+    fn test_inc_memory_indirect() {
         let mut cpu = crate::cpucontext::CpuContext::boot();
         let mut memory = crate::memory::Memory::boot();
 
@@ -541,6 +567,7 @@ mod tests {
             .unwrap();
         let mut inner = instruction.into_inner();
         let operand = inner.next().unwrap();
+        assert_eq!("word ptr [bx + si + 10h]", operand.as_str());
         handler_inc(&mut cpu, &mut memory, operand);
         assert_eq!(0x1235, memory.read16(0x1110));
 
