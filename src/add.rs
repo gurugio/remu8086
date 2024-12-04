@@ -103,7 +103,15 @@ fn _do_add8(cpu: &mut CpuContext, l: u8, r: u8) -> u8 {
 
 fn assemble_add(first: &Pair<Rule>, second: &Pair<Rule>) -> Vec<u8> {
     let mut v: Vec<u8> = Vec::new();
-    // TODO
+    if first.as_str() == "ax" && second.as_rule() == Rule::imm {
+        let imm = imm_to_num(&second).unwrap();
+        let opcode = 0x04;
+        let wbit = 1;
+        v.push(opcode | wbit);
+        v.push((imm & 0xff) as u8);
+        v.push(((imm & 0xff00) >> 8) as u8);
+    }
+    // TODO: Other cases
     v
 }
 
@@ -113,6 +121,8 @@ define_handler_two!(add, first, second, cpu, memory, {
         let r = imm_to_num(&second).unwrap();
         let v = do_add16(cpu, l, r);
         cpu.set_register16(first.as_str(), v);
+        let code = assemble_add(&first, &second);
+        println!("Code for add ax, {} = {:?}", r, code);
     } else if first.as_str() == "al" && second.as_rule() == Rule::imm {
         // TODO
     } else {
