@@ -61,7 +61,7 @@ fn do_add16(cpu: &mut CpuContext, l: u16, r: u16) -> u16 {
     // 1. the addition of two numbers causes a carry out of the most significant (leftmost) bits added.
     // 2. the subtraction of two numbers requires a borrow into the most significant (leftmost) bits subtracted.
     // 2nd case will be implemented in sub instruction handler.
-    if (r32 & 0x8000) == 0 && (r32 & 0x10000) == 1 {
+    if (r32 & 0x8000) == 0 && (r32 & 0x10000) != 0 {
         cpu.set_CF();
     } else {
         cpu.reset_CF();
@@ -71,7 +71,7 @@ fn do_add16(cpu: &mut CpuContext, l: u16, r: u16) -> u16 {
 }
 
 /// Maybe do_add16 and do_add8 could be unified as do_add(cpu, num_bit, l, r)
-fn do_add8(cpu: &mut CpuContext, l: u8, r: u8) -> u8 {
+fn _do_add8(cpu: &mut CpuContext, l: u8, r: u8) -> u8 {
     // work-around the overflow checker of Rust
     let l32: u32 = l as u32;
     let r32: u32 = r as u32 + l32;
@@ -199,6 +199,22 @@ mod tests {
         // Plus + Plus = Minus => Overflow error!
         do_add16(&mut cpu, 0x7fff, 1);
         assert_ne!(0, cpu.get_OF());
+    }
+
+    #[test]
+    fn test_add_carry() {
+        let mut cpu = CpuContext::boot();
+
+        // 0xffff + 1 = 0x10000 => 0x0 as u16.
+        // There is no overflow because -1 + 1 = 0.
+        // But there is a carry.
+        do_add16(&mut cpu, u16::MAX, 1);
+        assert_eq!(0, cpu.get_OF());
+        assert_ne!(0, cpu.get_CF());
+
+        do_add16(&mut cpu, 1, 1);
+        assert_eq!(0, cpu.get_OF());
+        assert_eq!(0, cpu.get_CF());
     }
 
     #[test]
