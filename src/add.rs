@@ -1,5 +1,6 @@
+use crate::assembler::{base_index_table, register_table};
 use crate::memory::Memory;
-use crate::parser::{imm_to_num, mem_to_num, Rule};
+use crate::parser::{self, imm_to_num, mem_to_num, Rule};
 use crate::{cpucontext::CpuContext, define_handler_two};
 use paste::paste;
 use pest::iterators::Pair;
@@ -26,6 +27,35 @@ e.g. add ax, [000c] 03 06 0c 00
 2-byte r/m bit 2-0: 110
   * When mode is 00, 110 means direct addressing mode.
   * When mode is 10, see base/index register table
+  * When mode is 11, see register table
+
+mod table for addressing
+00 16-bit displacement (=> 2-byte and 4-byte form)
+01 8-bit contents of next byte of instruction sign extended to 16 bits (=> 3-byte form)
+10 16-bit contents of next two bytes of instruction (=> 4-byte form)
+11 NOT used for memory addressing, increase the value in register
+
+register table
+000 AX AL
+001 CX CL
+010 DX DL
+011 BX BL
+100 SP AH
+101 BP CH
+110 SI DH
+111 DI BH
+
+base/index table when mod != 11
+r/m field | Base register | Index Register | address
+000       | BX            | SI             | DS:BX + SI + displacement
+001       | BX            | DI             | DS:BX + DI + displacement
+010       | BP            | SI             | SP:BP + SI + displacement
+011       | BP            | DI             | SP:BP + DI + displacement
+100       | none          | SI             | DS:SI + displacement
+101       | none          | DI             | DS:DI + displacement
+110       | BP            | none           | SP:BP + displacement
+111       | BX            | none           | DS:BX + displacement
+
 */
 
 /*
@@ -38,7 +68,81 @@ e.g. add ax, [000c] 03 06 0c 00
 /// ADD r/m8, imm8 $80 xx000xxx (ModR/M byte)
 /// ADD r/m16, imm16 $81 xx000xxx (ModR/M byte)
 /// ADD r/m16, imm8 $83 xx000xxx (ModR/M byte)
+
+reference: https://stevemorse.org/8086/
+Reg/memory with register to other: 0000_00dw mod reg r/m
+imm to register/memory: 1000_00sw mod 000 r/m
+imm to accumulator: 0000_010w data data if w>1
 */
+
+const OPCODE1_SHIFT: u8 = 2;
+const DBIT_SHIFT: u8 = 1;
+const SBIT_SHIFT: u8 = 1; // signed extended: NOT USED
+const WBIT_SHIFT: u8 = 0;
+const MOD_SHIFT: u8 = 6;
+const OPCODE2_SHIFT: u8 = 3;
+const REG_SHIFT: u8 = OPCODE2_SHIFT;
+const RM_SHIFT: u8 = 0;
+
+fn assemble_add(first: &Pair<Rule>, second: &Pair<Rule>) -> Vec<u8> {
+    let mut v: Vec<u8> = Vec::new();
+    if first.as_str() == "ax" && second.as_rule() == Rule::imm {
+        let imm = imm_to_num(&second).unwrap();
+        let opcode = 0x04;
+        let wbit = 1;
+        v.push(opcode | wbit);
+        v.push((imm & 0xff) as u8);
+        v.push(((imm & 0xff00) >> 8) as u8);
+    } else {
+        match (first.as_rule(), second.as_rule()) {
+            (Rule::reg16, Rule::reg16) => {
+                let opcode1 = 0 << OPCODE1_SHIFT;
+                let dbit = 1 << DBIT_SHIFT; // regbit=first-operand, rmbit=second-operand
+                let wbit = 1 << WBIT_SHIFT;
+                v.push(opcode1 | dbit | wbit);
+
+                let modbit = 3 << MOD_SHIFT; // rmbit => register
+                                             // no opcode2 but reg
+                let regbit = register_table(first.as_str()).unwrap() << REG_SHIFT;
+                let rmbit = register_table(second.as_str()).unwrap() << RM_SHIFT;
+                v.push(modbit | regbit | rmbit);
+            }
+            (Rule::reg16, Rule::imm) => {
+                let opcode1 = 0x20 << OPCODE1_SHIFT;
+                let wbit = 1 << WBIT_SHIFT;
+                v.push(opcode1 | wbit);
+
+                let modbit = 2 << MOD_SHIFT; // 2: 16-bit contents of next two bytes are imm
+                let rmbit = register_table(first.as_str()).unwrap() << RM_SHIFT;
+                v.push(modbit | rmbit);
+
+                let imm = parser::imm_to_num(&second).unwrap();
+                v.push((imm & 0xff).try_into().unwrap());
+                v.push(((imm & 0xff00) >> 8).try_into().unwrap());
+            }
+            (Rule::mem16, Rule::imm) => {
+                // todo
+            }
+            (Rule::mem16, Rule::reg16) => {
+                // todo
+            }
+            (Rule::indirect16, Rule::imm) => {
+                // todo
+            }
+            (Rule::indirect16, Rule::reg16) => {
+                // todo
+            }
+
+            _ => panic!(
+                "Unknown format of ADD instruction, add {}, {}",
+                first.as_str(),
+                second.as_str()
+            ),
+        }
+    }
+    // TODO: Other cases
+    v
+}
 
 fn do_add16(cpu: &mut CpuContext, l: u16, r: u16) -> u16 {
     // work-around the overflow checker of Rust
@@ -99,20 +203,6 @@ fn _do_add8(cpu: &mut CpuContext, l: u8, r: u8) -> u8 {
     }
 
     r_added
-}
-
-fn assemble_add(first: &Pair<Rule>, second: &Pair<Rule>) -> Vec<u8> {
-    let mut v: Vec<u8> = Vec::new();
-    if first.as_str() == "ax" && second.as_rule() == Rule::imm {
-        let imm = imm_to_num(&second).unwrap();
-        let opcode = 0x04;
-        let wbit = 1;
-        v.push(opcode | wbit);
-        v.push((imm & 0xff) as u8);
-        v.push(((imm & 0xff00) >> 8) as u8);
-    }
-    // TODO: Other cases
-    v
 }
 
 define_handler_two!(add, first, second, cpu, memory, {
@@ -235,5 +325,25 @@ mod tests {
     #[test]
     fn test_add_mem_reg() {
         // TODO
+    }
+
+    #[test]
+    fn test_add_reg_imm() {
+        // todo
+    }
+
+    #[test]
+    fn test_add_mem_imm() {
+        // todo
+    }
+
+    #[test]
+    fn test_add_indirect_imm() {
+        // todo
+    }
+
+    #[test]
+    fn test_add_indirect_reg() {
+        // todo
     }
 }
