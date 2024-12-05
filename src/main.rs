@@ -1,4 +1,5 @@
 mod add;
+mod assembler;
 mod common;
 mod cpucontext;
 mod inc;
