@@ -62,7 +62,6 @@
         <div class="button-container">
             <button id="buildButton">Build</button>
             <button id="stepButton">Step</button>
-            <button id="reloadButton">Reload</button>
             <button>Run</button>
         </div>
         <textarea id="codeInput">mov ax, 1
@@ -87,6 +86,8 @@ mov dx, 4</textarea>
         document.getElementById('buildButton').addEventListener('click', () => {
             const codeInput = document.getElementById('codeInput');
             const lines = codeInput.value.split('\n');
+            currentLine = 0;
+            clearHighlight(codeInput);
 
             if (lines) {
                 fetch('http://127.0.0.1:8080/build', {
@@ -97,11 +98,13 @@ mov dx, 4</textarea>
                     body: JSON.stringify({ code: lines })
                 })
                     .then(response => response.json())
+                    .then(data => {
+                        displayRegisters(data);
+                        displayMemory(data);
+                    })
                     .catch(error => {
                         console.error('Network error:', error);
                     });
-
-                highlightLine(codeInput, 0);
             }
         });
 
@@ -110,52 +113,26 @@ mov dx, 4</textarea>
             const lines = codeInput.value.split('\n');
 
             if (currentLine < lines.length) {
-                const lineToSend = lines[currentLine].trim();
-                if (lineToSend) {
-                    fetch('http://127.0.0.1:8080/step', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ code: lineToSend })
+                fetch('http://127.0.0.1:8080/step', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ line: currentLine })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        displayRegisters(data);
+                        displayMemory(data);
                     })
-                        .then(response => response.json())
-                        .then(data => {
-                            displayRegisters(data);
-                            displayMemory(data);
-                        })
-                        .catch(error => {
-                            console.error('Network error:', error);
-                        });
-
-                    highlightLine(codeInput, currentLine);
-                    currentLine++;
-                }
+                    .catch(error => {
+                        console.error('Network error:', error);
+                    });
+                highlightLine(codeInput, currentLine);
+                currentLine++;
             } else {
                 console.log('No more lines to send.');
             }
-        });
-
-        document.getElementById('reloadButton').addEventListener('click', () => {
-            const codeInput = document.getElementById('codeInput');
-            currentLine = 0;
-            highlightLine(codeInput, currentLine);
-
-            fetch('http://127.0.0.1:8080/reload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ code: "" })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    displayRegisters(data);
-                    displayMemory(data);
-                })
-                .catch(error => {
-                    console.error('Network error:', error);
-                });
         });
 
         function displayRegisters(data) {
@@ -190,6 +167,11 @@ FLAGS: ${parseInt(data.FLAGS, 10).toString(16).toUpperCase().padStart(4, '0')}
 
             textarea.setSelectionRange(start, end);
             textarea.focus();
+        }
+
+        function clearHighlight(textarea) {
+            textarea.setSelectionRange(0, 0);
+            textarea.blur();
         }
     </script>
 </body>
