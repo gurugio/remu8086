@@ -255,7 +255,7 @@ define_handler_two!(add, first, second, cpu, memory, {
             (Rule::mem16, Rule::reg16) => {
                 let address = mem_to_num(&first).unwrap();
                 let l = memory.read16(address);
-                let r = cpu.get_register16(first.as_str());
+                let r = cpu.get_register16(second.as_str());
                 let v = do_add16(cpu, l, r);
                 memory.write16(address, v);
             }
@@ -280,7 +280,11 @@ define_handler_two!(add, first, second, cpu, memory, {
 
 #[cfg(test)]
 mod tests {
+    use crate::parser::{self, AssemblyParser};
+
+    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
+    use pest::Parser;
 
     #[test]
     fn test_add_overflow() {
@@ -324,7 +328,21 @@ mod tests {
 
     #[test]
     fn test_add_mem_reg() {
-        // TODO
+        let instruction = AssemblyParser::parse(Rule::instruction, "add word ptr [0x1234], ax")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::add, instruction.as_rule());
+        assert_eq!("add word ptr [0x1234], ax", instruction.as_str());
+
+        let mut inner = instruction.into_inner();
+        let mem16 = inner.next().unwrap();
+        assert_eq!(Rule::mem16, mem16.as_rule());
+        assert_eq!("word ptr [0x1234]", mem16.as_str());
+
+        let ax = inner.next().unwrap(); // second operands is imm
+        assert_eq!(Rule::reg16, ax.as_rule());
+        assert_eq!("ax", ax.as_str());
     }
 
     #[test]
