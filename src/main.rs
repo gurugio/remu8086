@@ -3,6 +3,7 @@ mod assembler;
 mod common;
 mod cpucontext;
 mod inc;
+mod jmp;
 mod memory;
 mod mov;
 mod org;
@@ -24,7 +25,7 @@ pub struct ProgramLine {
     _start_address: u16,
     _machine_code: Vec<u8>,
     // If this line has a label,
-    _lable: Option<String>,
+    label: bool,
 }
 
 impl ProgramLine {
@@ -33,7 +34,7 @@ impl ProgramLine {
             code: code.to_owned(),
             _start_address: 0,
             _machine_code: Vec::new(),
-            _lable: None,
+            label: false,
         }
     }
 }
@@ -53,7 +54,8 @@ impl Hardware8086 {
         }
     }
 
-    fn handle_instruction(&mut self, linenum: usize) -> Result<(), String> {
+    /// return: next line number
+    fn handle_instruction(&mut self, linenum: usize) -> Result<usize, String> {
         println!("Handle instruction:{}-line", linenum);
         let programline: &ProgramLine = self.program.get(&linenum).unwrap();
         // The line is not an instruction as like "mov ax, bx"
@@ -69,6 +71,7 @@ impl Hardware8086 {
 
         assert_eq!(parser::Rule::program, program.as_rule());
         let instruction = program.into_inner().next().unwrap();
+        let mut nextline = linenum + 1;
 
         match instruction.as_rule() {
             parser::Rule::mov => {
@@ -83,11 +86,28 @@ impl Hardware8086 {
             parser::Rule::inc => {
                 caller_one!(inc, self.cpu, self.memory, instruction);
             }
+            parser::Rule::label => {
+                println!("Meet label and do nothing");
+            }
+            parser::Rule::jmp => {
+                let operand = instruction.clone().into_inner().next().unwrap();
+                assert_eq!(parser::Rule::name, operand.as_rule());
+                caller_one!(jmp, self.cpu, self.memory, instruction);
+                for (linenum, programline) in self.program.iter() {
+                    println!("linenum {}: programline {}", linenum, programline.code);
+                    // BUGBUG: start_with() is not best to compare "labelname:" and "labelname"
+                    if programline.label == true && programline.code.starts_with(operand.as_str()) {
+                        nextline = *linenum + 1;
+                        println!("set next={}", nextline);
+                    }
+                }
+            }
             _ => println!("NOT implemented yet:{}", &programline.code),
         }
         println!("After instruction: {:?}", self.cpu);
 
-        Ok(())
+        println!("nextline={}", nextline);
+        Ok(nextline)
     }
 
     fn reboot(&mut self) {
@@ -97,9 +117,10 @@ impl Hardware8086 {
 
     /// Return CPU context in Json format
     /// "Reg": "value"
-    fn get_hardware(&self) -> serde_json::Value {
+    fn program_response(&self, nextline: usize) -> serde_json::Value {
         let m = format!("{}", self.memory);
         serde_json::json!({
+            "nextline": nextline,
             "AX": self.cpu.get_register16("ax").to_string(),
             "BX": self.cpu.get_register16("bx").to_string(),
             "CX": self.cpu.get_register16("cx").to_string(),
@@ -122,7 +143,11 @@ impl Hardware8086 {
         // Clear program table to read new program
         self.program.clear();
         for (i, instruction) in program.iter().enumerate() {
-            self.program.insert(i, ProgramLine::new(instruction));
+            let mut p = ProgramLine::new(instruction);
+            if instruction.ends_with(":") {
+                p.label = true;
+            }
+            self.program.insert(i, p);
         }
     }
 
@@ -138,8 +163,8 @@ async fn handle_step(req_body: String, data: web::Data<HardwareLock>) -> impl Re
     let mut hardware = data.hardware.lock().unwrap();
     let v: Value = serde_json::from_str(&req_body).unwrap();
     let linenum: usize = v["line"].as_u64().unwrap() as usize; // BUGBUG
-    hardware.handle_instruction(linenum).unwrap();
-    HttpResponse::Ok().json(hardware.get_hardware())
+    let nextline = hardware.handle_instruction(linenum).unwrap();
+    HttpResponse::Ok().json(hardware.program_response(nextline))
     //HttpResponse::Ok()
 }
 
@@ -147,7 +172,7 @@ async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl 
     println!("/reload: Receive data={}", req_body);
     let mut hardware = data.hardware.lock().unwrap();
     hardware.reboot();
-    HttpResponse::Ok().json(hardware.get_hardware())
+    HttpResponse::Ok().json(hardware.program_response(0))
 }
 
 async fn handle_build(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
@@ -158,7 +183,7 @@ async fn handle_build(req_body: String, data: web::Data<HardwareLock>) -> impl R
     let program: HashMap<String, Vec<String>> = serde_json::from_str(&req_body).unwrap();
     hardware.build_program_table(&program["code"]);
     println!("Build new program table: {:?}", hardware.program);
-    HttpResponse::Ok().json(hardware.get_hardware())
+    HttpResponse::Ok().json(hardware.program_response(0))
 }
 
 #[actix_web::main]
