@@ -60,8 +60,9 @@
 <body>
     <div class="left-panel">
         <div class="button-container">
-            <button id="reloadButton">Reload</button>
+            <button id="buildButton">Build</button>
             <button id="stepButton">Step</button>
+            <button id="reloadButton">Reload</button>
             <button>Run</button>
         </div>
         <textarea id="codeInput" placeholder="Enter your code here..."></textarea>
@@ -79,6 +80,27 @@
 
     <script>
         let currentLine = 0;
+
+        document.getElementById('buildButton').addEventListener('click', () => {
+            const codeInput = document.getElementById('codeInput');
+            const lines = codeInput.value.split('\n');
+
+            if (lines) {
+                fetch('http://127.0.0.1:8080/build', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ code: lines })
+                })
+                    .then(response => response.json())
+                    .catch(error => {
+                        console.error('Network error:', error);
+                    });
+
+                highlightLine(codeInput, 0);
+            }
+        });
 
         document.getElementById('stepButton').addEventListener('click', () => {
             const codeInput = document.getElementById('codeInput');
