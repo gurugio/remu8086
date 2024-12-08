@@ -21,19 +21,19 @@ use serde_json::Value;
 pub struct ProgramLine {
     code: String,
     // BUGBUG: It will be 20-bit address with segment:address
-    start_address: u16,
-    machine_code: Vec<u8>,
+    _start_address: u16,
+    _machine_code: Vec<u8>,
     // If this line has a label,
-    lable: Option<String>,
+    _lable: Option<String>,
 }
 
 impl ProgramLine {
     fn new(code: &str) -> Self {
         ProgramLine {
             code: code.to_owned(),
-            start_address: 0,
-            machine_code: Vec::new(),
-            lable: None,
+            _start_address: 0,
+            _machine_code: Vec::new(),
+            _lable: None,
         }
     }
 }
@@ -53,16 +53,22 @@ impl Hardware8086 {
         }
     }
 
-    fn handle_instruction(&mut self, line: &str) -> Result<(), String> {
-        println!("Handle instruction:{}", line);
+    fn handle_instruction(&mut self, linenum: usize) -> Result<(), String> {
+        println!("Handle instruction:{}-line", linenum);
+        let programline: &ProgramLine = self.program.get(&linenum).unwrap();
         // The line is not an instruction as like "mov ax, bx"
         // but also COMMENT, NEWLINE or WHITESPACE.
         // Therefore it uses Rule::program, not Rule::instruction when parsing the line
         // because Rule::instruction cannot handle COMMENT, NEWLINE and WHITESPACE.
-        let instruction = parser::AssemblyParser::parse(parser::Rule::program, line)
+        let line: &str = &programline.code;
+        println!("line={:?}", line);
+        let program = parser::AssemblyParser::parse(parser::Rule::program, line)
             .unwrap()
             .next()
             .unwrap();
+
+        assert_eq!(parser::Rule::program, program.as_rule());
+        let instruction = program.into_inner().next().unwrap();
 
         match instruction.as_rule() {
             parser::Rule::mov => {
@@ -77,7 +83,7 @@ impl Hardware8086 {
             parser::Rule::inc => {
                 caller_one!(inc, self.cpu, self.memory, instruction);
             }
-            _ => println!("NOT implemented yet:{}", line),
+            _ => println!("NOT implemented yet:{}", &programline.code),
         }
         println!("After instruction: {:?}", self.cpu);
 
@@ -131,9 +137,10 @@ async fn handle_step(req_body: String, data: web::Data<HardwareLock>) -> impl Re
     println!("/step: Receive data={}", req_body);
     let mut hardware = data.hardware.lock().unwrap();
     let v: Value = serde_json::from_str(&req_body).unwrap();
-    let inst = v["code"].as_str().unwrap();
-    hardware.handle_instruction(inst).unwrap();
+    let linenum: usize = v["line"].as_u64().unwrap() as usize; // BUGBUG
+    hardware.handle_instruction(linenum).unwrap();
     HttpResponse::Ok().json(hardware.get_hardware())
+    //HttpResponse::Ok()
 }
 
 async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
@@ -146,11 +153,12 @@ async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl 
 async fn handle_build(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
     println!("/build: Receive data={}", req_body);
     // req_body: {"code":["mov ax, 1","mov bx, 1"]}
-    let program: HashMap<String, Vec<String>> = serde_json::from_str(&req_body).unwrap();
     let mut hardware = data.hardware.lock().unwrap();
+    hardware.reboot();
+    let program: HashMap<String, Vec<String>> = serde_json::from_str(&req_body).unwrap();
     hardware.build_program_table(&program["code"]);
     println!("Build new program table: {:?}", hardware.program);
-    HttpResponse::Ok()
+    HttpResponse::Ok().json(hardware.get_hardware())
 }
 
 #[actix_web::main]
@@ -194,10 +202,14 @@ mod tests {
         // I made this to test the entire program on the terminal without web-things.
         //
         let mut hardware = Hardware8086::new();
-        let _ = read_to_string("example.as")
+        let program: Vec<String> = read_to_string("example.as")
             .unwrap()
             .lines()
-            .map(|l| hardware.handle_instruction(l).unwrap())
-            .collect::<()>();
+            .map(|l| l.to_owned())
+            .collect::<Vec<String>>();
+        hardware.build_program_table(&program);
+        for i in 0..program.len() {
+            let _ = hardware.handle_instruction(i).unwrap();
+        }
     }
 }
