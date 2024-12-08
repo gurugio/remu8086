@@ -28,7 +28,7 @@ reg8 = { "ah" | "al" | "bh" | "bl" | "ch" | "cl" | "dh" | "dl" }
 /// Allow only HEX digit in assembly code
 /// Atomic rule: No whitespace between 0x and others
 /// Three hex digit form: 0xabcd, 0abcdh, 1abch
-imm = @{ "0x" ~ ASCII_HEX_DIGIT+ | ASCII_HEX_DIGIT+ ~ "h" }
+imm = @{ "0x" ~ ASCII_HEX_DIGIT+ | ASCII_HEX_DIGIT+ ~ "h" | ASCII_DIGIT+ }
 
 // direct addressing: use only address such as [0a0h] or [1234h]
 mem = _{ mem8 | mem16 }

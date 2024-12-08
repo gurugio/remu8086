@@ -11,11 +11,11 @@ pub struct AssemblyParser;
 // Separate function for unittest
 fn _imm_to_num(s: &str) -> Result<u16, String> {
     if s.starts_with("0x") {
-        u16::from_str_radix(&s[2..], 16).map_err(|_| "Invalid hex number".to_string())
+        u16::from_str_radix(&s[2..], 16).map_err(|_| format!("Invalid hex number:{}", s))
     } else if s.ends_with('h') {
-        u16::from_str_radix(&s[..s.len() - 1], 16).map_err(|_| "Invalid hex number".to_string())
+        u16::from_str_radix(&s[..s.len() - 1], 16).map_err(|_| format!("Invalid hex number:{}", s))
     } else {
-        Err("imm is not a valid hex format".to_string())
+        u16::from_str_radix(&s, 10).map_err(|_| format!("Invalid digit number:{}", s))
     }
 }
 
