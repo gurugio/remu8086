@@ -10,15 +10,38 @@ mod parser;
 
 use paste::paste;
 use pest::Parser;
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use serde_json::Value;
 
+#[derive(Debug)]
+pub struct ProgramLine {
+    code: String,
+    // BUGBUG: It will be 20-bit address with segment:address
+    start_address: u16,
+    machine_code: Vec<u8>,
+    // If this line has a label,
+    lable: Option<String>,
+}
+
+impl ProgramLine {
+    fn new(code: &str) -> Self {
+        ProgramLine {
+            code: code.to_owned(),
+            start_address: 0,
+            machine_code: Vec::new(),
+            lable: None,
+        }
+    }
+}
+
 struct Hardware8086 {
     cpu: cpucontext::CpuContext,
     memory: memory::Memory,
+    program: HashMap<usize, ProgramLine>,
 }
 
 impl Hardware8086 {
@@ -26,6 +49,7 @@ impl Hardware8086 {
         Self {
             cpu: cpucontext::CpuContext::boot(),
             memory: memory::Memory::boot(),
+            program: HashMap::new(),
         }
     }
 
@@ -88,6 +112,14 @@ impl Hardware8086 {
         })
     }
 
+    pub fn build_program_table(&mut self, program: &Vec<String>) {
+        // Clear program table to read new program
+        self.program.clear();
+        for (i, instruction) in program.iter().enumerate() {
+            self.program.insert(i, ProgramLine::new(instruction));
+        }
+    }
+
     // TODO: fn get_memory(&self) -> serde_json::Value {}
 }
 
@@ -111,6 +143,16 @@ async fn handle_reload(req_body: String, data: web::Data<HardwareLock>) -> impl 
     HttpResponse::Ok().json(hardware.get_hardware())
 }
 
+async fn handle_build(req_body: String, data: web::Data<HardwareLock>) -> impl Responder {
+    println!("/build: Receive data={}", req_body);
+    // req_body: {"code":["mov ax, 1","mov bx, 1"]}
+    let program: HashMap<String, Vec<String>> = serde_json::from_str(&req_body).unwrap();
+    let mut hardware = data.hardware.lock().unwrap();
+    hardware.build_program_table(&program["code"]);
+    println!("Build new program table: {:?}", hardware.program);
+    HttpResponse::Ok()
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Rust web-server started at 127.0.0.1:8080");
@@ -132,6 +174,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(myserverdata.clone())
             .route("/step", web::post().to(handle_step))
             .route("/reload", web::post().to(handle_reload))
+            .route("/build", web::post().to(handle_build))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
