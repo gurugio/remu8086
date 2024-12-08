@@ -181,7 +181,10 @@ impl CpuContext {
             "al" | "ah" | "bl" | "bh" | "cl" | "ch" | "dl" | "dh" => {
                 Ok(self.get_register8(reg) as u16)
             }
-            _ => Err("Wrong register specified for get_register".to_owned()),
+            _ => Err(format!(
+                "Wrong register specified for get_register: {}",
+                reg
+            )),
         }
     }
 
@@ -201,7 +204,7 @@ impl CpuContext {
             "ss" => self.get_ss(),
             "ip" => self.get_ip(),
             "flags" => self.get_flags(),
-            _ => panic!("Wrong register specified for get_register16"),
+            _ => panic!("Wrong register specified for get_register16: {}", reg),
         };
         r
     }
@@ -216,7 +219,7 @@ impl CpuContext {
             "ch" => self.get_ch(),
             "dl" => self.get_dl(),
             "dh" => self.get_dh(),
-            _ => panic!("Wrong register name for get_register8"),
+            _ => panic!("Wrong register name for get_register8: {}", reg),
         };
         r
     }
@@ -228,7 +231,7 @@ impl CpuContext {
             "al" | "ah" | "bl" | "bh" | "cl" | "ch" | "dl" | "dh" => {
                 Ok(self.set_register8(reg, (v & 0xff) as u8))
             }
-            _ => Err("Wrong register specified for set_register".to_owned()),
+            _ => Err(format!("Wrong register specified for set_register:{}", reg)),
         }
     }
 
@@ -248,7 +251,7 @@ impl CpuContext {
             "ss" => self.set_ss(v),
             "ip" => self.set_ip(v),
             "flags" => self.set_flags(v),
-            _ => panic!("Wrong register specified for set_register16"),
+            _ => panic!("Wrong register specified for set_register16: {}", reg),
         };
     }
 
@@ -262,7 +265,7 @@ impl CpuContext {
             "ch" => self.set_ch(v),
             "dl" => self.set_dl(v),
             "dh" => self.set_dh(v),
-            _ => panic!("Wrong register specified for set_register8"),
+            _ => panic!("Wrong register specified for set_register8: {}", reg),
         };
     }
 
