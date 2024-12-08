@@ -73,9 +73,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Decimal is not allowed")]
-    fn test_parser_imm_failure() {
-        AssemblyParser::parse(Rule::imm, "1234").expect("Decimal is not allowed");
+    fn test_parser_imm_decimal() {
+        let digit = AssemblyParser::parse(Rule::imm, "1234")
+            .unwrap()
+            .next()
+            .unwrap();
+        assert_eq!(Rule::imm, digit.as_rule());
+        assert_eq!("1234", digit.as_str());
     }
 
     #[test]
@@ -265,7 +269,10 @@ mod tests {
         assert_eq!(Ok(0xabc), _imm_to_num("0abch"));
         assert_eq!(Ok(0x45), _imm_to_num("045h"));
 
-        assert_eq!(Err("Invalid hex number".to_owned()), _imm_to_num("0xghi"));
+        assert_eq!(
+            Err("Invalid hex number:0xghi".to_owned()),
+            _imm_to_num("0xghi")
+        );
     }
 
     #[test]
