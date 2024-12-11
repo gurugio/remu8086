@@ -1,5 +1,9 @@
 # Rust Emulator 8086
 
+*At the moment, it supports only a few instruction: inc, mov and jmp. The list of support instructions will soon grow.*
+
+## How to use
+
 1. Run the back-end server
 ```
 remu8086 $ cargo run
@@ -24,7 +28,7 @@ Rust web-server started at 127.0.0.1:8080
 ![](/step.png)
 
 
-# References
+## References
 
-[In the beginning, there was the Assembly tutorial by myself](https://github.com/gurugio/book_assembly_8086)
-[Microprocessor Tutorials of GeeksforGeeks](https://www.geeksforgeeks.org/microprocessor-tutorials/)
+* [In the beginning, there was the Assembly tutorial by myself](https://github.com/gurugio/book_assembly_8086)
+* [Microprocessor Tutorials of GeeksforGeeks](https://www.geeksforgeeks.org/microprocessor-tutorials/)
