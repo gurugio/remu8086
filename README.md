@@ -13,7 +13,7 @@ remu8086 $ cargo run
 Rust web-server started at 127.0.0.1:8080
 ```
 
-2. Open "index.html" file with your browser.
+2. Open "index.html" file including an example code with your browser.
 
 ![](/open.png)
 
