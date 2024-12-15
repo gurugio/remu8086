@@ -14,7 +14,7 @@ impl Memory {
         // Memory structure is an 1MB size array.
         // It generates stack-overflow if it is allocated on the stack.
         Memory {
-            data: Box::new([0; 1024 * 1024]), // 배열을 0으로 초기화
+            data: vec![0; 1024 * 1024].try_into().unwrap(), // 배열을 0으로 초기화
             last_address: RefCell::new(0),
         }
     }
